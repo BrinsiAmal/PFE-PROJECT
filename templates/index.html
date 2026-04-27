@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Attijari Bank — Système RPA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+/* ══ RESET ══ */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#1a1f2e;min-height:100vh;display:flex}
+
+/* ══ SIDEBAR ══ */
+.sidebar{width:240px;min-height:100vh;background:#1a3a6b;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,0.15)}
+.sb-header{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sb-logo{display:flex;align-items:center;gap:12px}
+.sb-icon{width:42px;height:42px;background:#b8860b;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sb-title{font-size:15px;font-weight:700;color:#fff;line-height:1.2}
+.sb-sub{font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sb-section{padding:16px 12px 6px}
+.sb-label{font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(255,255,255,0.3);text-transform:uppercase;padding:0 6px;margin-bottom:8px}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:none;color:rgba(255,255,255,0.6);font-size:13.5px;font-weight:500;border-radius:8px;cursor:pointer;text-align:left;margin-bottom:2px;position:relative;transition:all .18s;font-family:'Segoe UI',Arial,sans-serif}
+.nav-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
+.nav-btn.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
+.nav-btn.active::before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:3px;background:#b8860b;border-radius:0 3px 3px 0}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:none}
+.nav-badge.show{display:block}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:#c0392b;margin-left:auto;animation:pulse 2s infinite}
+.sb-dot.online{background:#22c55e}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.25);text-align:center;line-height:1.7}
+
+/* ══ MAIN ══ */
+.main{margin-left:240px;padding:28px 32px;flex:1;min-height:100vh}
+.page{display:none}
+.page.active{display:block;animation:fadein .25s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ══ TOPBAR ══ */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.pg-title{font-size:26px;font-weight:700;color:#1a1f2e}
+.pg-sub{font-size:13px;color:#7a839a;margin-top:3px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#3d4560;font-size:13px;font-weight:500;cursor:pointer;font-family:'Segoe UI',Arial,sans-serif;transition:all .18s}
+.btn:hover{border-color:#1a3a6b;color:#1a3a6b}
+.btn-primary{background:#1a3a6b;color:#fff;border-color:#1a3a6b}
+.btn-primary:hover{background:#142d54;color:#fff}
+
+/* ══ BANNER ES ══ */
+.es-banner{display:flex;align-items:center;gap:10px;background:#fdf0ee;border:1px solid #f5b4ac;border-radius:10px;padding:12px 16px;margin-bottom:20px;color:#c0392b;font-size:13px;font-weight:500}
+.es-banner.hidden{display:none}
+
+/* ══ KPI GRID ══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi-card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.09)}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+.kpi-card.c-blue::after{background:#1565c0}.kpi-card.c-green::after{background:#1a7a4a}
+.kpi-card.c-red::after{background:#c0392b}.kpi-card.c-gold::after{background:#b8860b}
+.kpi-card.c-orange::after{background:#d35400}.kpi-card.c-purple::after{background:#6a1b9a}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kpi-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.kpi-card.c-blue   .kpi-icon{background:#e8f0fd}
+.kpi-card.c-green  .kpi-icon{background:#eaf7f1}
+.kpi-card.c-red    .kpi-icon{background:#fdf0ee}
+.kpi-card.c-gold   .kpi-icon{background:#fdf6e3}
+.kpi-card.c-orange .kpi-icon{background:#fef5ee}
+.kpi-card.c-purple .kpi-icon{background:#f5eefb}
+.kpi-label{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:#7a839a}
+.kpi-value{font-size:28px;font-weight:700;color:#1a1f2e;margin:5px 0 3px;line-height:1}
+.kpi-sub{font-size:11px;color:#a0aab8}
+
+/* ══ CARDS ══ */
+.card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.card-title{font-size:14px;font-weight:700;color:#1a1f2e;margin-bottom:3px}
+.card-sub{font-size:12px;color:#7a839a;margin-bottom:16px}
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+.chart-full{grid-column:1/-1}
+.chart-wrap{position:relative;height:240px}
+
+/* ══ TABLE ══ */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#f4f6f8}
+th{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:#7a839a;padding:10px 12px;text-align:left;border-bottom:2px solid #dde2ec;white-space:nowrap}
+td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f0f2f5;color:#1a1f2e;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8f9fb}
+
+/* ══ BADGES ══ */
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-red   {background:#fdf0ee;color:#c0392b}
+.b-orange{background:#fef5ee;color:#d35400}
+.b-green {background:#eaf7f1;color:#1a7a4a}
+.b-blue  {background:#e8f0fd;color:#1565c0}
+.b-purple{background:#f5eefb;color:#6a1b9a}
+.b-gold  {background:#fdf6e3;color:#b8860b}
+.b-grey  {background:#f0f2f5;color:#7a839a}
+
+/* ══ PROGRESS ══ */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.prog-label{font-size:12px;font-weight:500;color:#3d4560;min-width:130px}
+.prog-bar{flex:1;height:7px;background:#f0f2f5;border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.prog-val{font-size:12px;font-weight:600;color:#3d4560;min-width:36px;text-align:right}
+
+/* ══ SECTION TITLE ══ */
+.sec-title{font-size:13px;font-weight:700;color:#3d4560;margin:22px 0 14px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:#dde2ec}
+
+/* ══ FILTER BAR ══ */
+.filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.search-inp{flex:1;min-width:200px;padding:8px 14px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#1a1f2e;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;outline:none;transition:border-color .2s}
+.search-inp:focus{border-color:#1a3a6b}
+.filter-sel{padding:8px 12px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#3d4560;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;outline:none;cursor:pointer}
+
+/* ══ PAGINATION ══ */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 0 0;border-top:1px solid #f0f2f5;margin-top:6px}
+.pag-info{font-size:12px;color:#7a839a}
+.pag-btns{display:flex;gap:6px}
+.pag-btn{padding:5px 14px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#3d4560;font-size:12px;cursor:pointer;font-family:'Segoe UI',Arial,sans-serif;transition:all .15s}
+.pag-btn:hover{border-color:#1a3a6b;color:#1a3a6b}
+.pag-btn:disabled{opacity:.4;cursor:default;pointer-events:none}
+
+/* ══ ALERTES ══ */
+.alert-list{display:flex;flex-direction:column;gap:10px}
+.alert-item{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.alert-item.critique{border-left:4px solid #c0392b;background:#fffbfb}
+.alert-item.haute{border-left:4px solid #d35400;background:#fffdf9}
+.alert-ico{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.alert-item.critique .alert-ico{background:#fdf0ee}
+.alert-item.haute    .alert-ico{background:#fef5ee}
+.alert-body{flex:1}
+.alert-titre{font-weight:600;font-size:13.5px;color:#1a1f2e;margin-bottom:3px}
+.alert-msg{font-size:12px;color:#7a839a;margin-bottom:6px}
+.alert-meta{display:flex;gap:12px;flex-wrap:wrap}
+.alert-meta span{font-size:11px;color:#a0aab8}
+
+/* ══ STATUS ══ */
+.status-card{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:18px;margin-bottom:20px}
+.status-ico{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
+.status-ico.ok{background:#eaf7f1}.status-ico.err{background:#fdf0ee}
+.status-lbl{font-size:17px;font-weight:700}
+.status-lbl.ok{color:#1a7a4a}.status-lbl.err{color:#c0392b}
+.status-url{font-size:12px;color:#7a839a;margin-top:3px}
+.stat-list{display:flex;flex-direction:column;gap:8px}
+.stat-item{display:flex;align-items:center;justify-content:space-between;background:#f4f6f8;border:1px solid #dde2ec;border-radius:8px;padding:10px 14px}
+.stat-name{font-size:13px;font-weight:500;color:#3d4560}
+.stat-count{font-size:17px;font-weight:700;color:#1a3a6b}
+
+/* ══ LOADER ══ */
+.loader{display:flex;align-items:center;justify-content:center;height:100px;color:#7a839a;font-size:13px;gap:10px}
+.spinner{width:18px;height:18px;border-radius:50%;border:2px solid #dde2ec;border-top-color:#1a3a6b;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;padding:2px 6px;border-radius:4px;color:#1a3a6b}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">
+      <div class="sb-icon">🏦</div>
+      <div>
+        <div class="sb-title">Attijari Bank</div>
+        <div class="sb-sub">Système RPA · PFE 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Analyse</div>
+    <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
+    <button class="nav-btn" onclick="showPage('logs',this)"><span class="nav-icon">📋</span>Logs Bancaires</button>
+    <button class="nav-btn" onclick="showPage('anomalies',this)"><span class="nav-icon">🔍</span>Anomalies ML</button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">RPA</div>
+    <button class="nav-btn" onclick="showPage('decisions',this)"><span class="nav-icon">🤖</span>Décisions RPA</button>
+    <button class="nav-btn" onclick="showPage('opportunites',this)"><span class="nav-icon">🚀</span>Opportunités</button>
+    <button class="nav-btn" onclick="showPage('alertes',this)"><span class="nav-icon">🚨</span>Alertes<span class="nav-badge" id="nav-badge-alertes"></span></button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Système</div>
+    <button class="nav-btn" onclick="showPage('status',this)"><span class="nav-icon">⚙️</span>Statut ES<span class="sb-dot" id="sidebar-dot"></span></button>
+  </div>
+
+  <div class="sb-footer">Phase 2 · Phase 3 · Phase 4<br/>Elasticsearch · n8n · Kibana</div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="es-banner hidden" id="es-banner">⚠️ <strong>Elasticsearch non disponible</strong> — Lancez : <code>docker-compose up -d</code></div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="topbar">
+      <div><div class="pg-title">Vue d'ensemble</div><div class="pg-sub">Résultats temps réel — Elasticsearch + JSON Phase 2 &amp; 3</div></div>
+      <button class="btn" onclick="loadDashboard()">↻ Actualiser</button>
+    </div>
+    <div class="kpi-grid" id="kpi-grid"><div class="loader"><div class="spinner"></div>Chargement...</div></div>
+    <div class="charts-grid">
+      <div class="card chart-full">
+        <div class="card-title">Activité par heure</div><div class="card-sub">Total logs vs échecs sur 24h</div>
+        <div class="chart-wrap"><canvas id="chart-heures"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Taux d'échec par agence</div><div class="card-sub">Classement des agences</div>
+        <div class="chart-wrap"><canvas id="chart-agences-db"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Codes erreur fréquents</div><div class="card-sub">Distribution des erreurs</div>
+        <div class="chart-wrap"><canvas id="chart-erreurs-db"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div class="page" id="page-logs">
+    <div class="topbar">
+      <div><div class="pg-title">Logs Bancaires</div><div class="pg-sub">Analyse des 10 000 logs — Elasticsearch</div></div>
+      <button class="btn" onclick="loadLogs()">↻ Actualiser</button>
+    </div>
+    <div class="charts-grid">
+      <div class="card"><div class="card-title">Top 10 actions échouées</div><div class="card-sub">Actions avec le plus d'échecs</div><div class="chart-wrap"><canvas id="chart-actions"></canvas></div></div>
+      <div class="card"><div class="card-title">Codes erreur fréquents</div><div class="card-sub">Distribution des erreurs</div><div class="chart-wrap"><canvas id="chart-erreurs-lg"></canvas></div></div>
+    </div>
+    <div class="sec-title">Taux d'échec par agence</div>
+    <div class="card"><div id="agences-progress"><div class="loader"><div class="spinner"></div></div></div></div>
+  </div>
+
+  <!-- ANOMALIES -->
+  <div class="page" id="page-anomalies">
+    <div class="topbar">
+      <div><div class="pg-title">Anomalies ML</div><div class="pg-sub">Isolation Forest — Toutes les anomalies détectées</div></div>
+      <button class="btn" onclick="loadAnomalies()">↻ Actualiser</button>
+    </div>
+    <div class="kpi-grid" id="anomalies-kpi"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="charts-grid">
+      <div class="card"><div class="card-title">Top utilisateurs anormaux</div><div class="card-sub">R008 — comportements suspicieux</div><div class="chart-wrap"><canvas id="chart-anom-users"></canvas></div></div>
+      <div class="card"><div class="card-title">Anomalies par agence</div><div class="card-sub">Répartition géographique</div><div class="chart-wrap"><canvas id="chart-anom-agences"></canvas></div></div>
+    </div>
+    <div class="sec-title">Liste complète des anomalies</div>
+    <div class="card">
+      <div class="filter-bar">
+        <input class="search-inp" id="search-anom" placeholder="🔍 Utilisateur, processus, action..." oninput="renderAnomaliesTable()"/>
+        <select class="filter-sel" id="filter-anom-impact" onchange="renderAnomaliesTable()">
+          <option value="">Tous impacts</option><option value="CRITIQUE">CRITIQUE</option><option value="HAUT">HAUT</option>
+        </select>
+      </div>
+      <div id="table-anomalies"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <!-- DÉCISIONS -->
+  <div class="page" id="page-decisions">
+    <div class="topbar">
+      <div><div class="pg-title">Décisions RPA</div><div class="pg-sub">Moteur de décision — Toutes les décisions générées</div></div>
+      <button class="btn" onclick="loadDecisions()">↻ Actualiser</button>
+    </div>
+    <div class="kpi-grid" id="decisions-kpi"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="charts-grid">
+      <div class="card"><div class="card-title">Décisions par type de robot</div><div class="card-sub">Répartition des interventions</div><div class="chart-wrap"><canvas id="chart-dec-type"></canvas></div></div>
+      <div class="card"><div class="card-title">Décisions par source</div><div class="card-sub">Origine des problèmes</div><div class="chart-wrap"><canvas id="chart-dec-source"></canvas></div></div>
+    </div>
+    <div class="sec-title">Liste complète des décisions</div>
+    <div class="card">
+      <div class="filter-bar">
+        <input class="search-inp" id="search-dec" placeholder="🔍 Robot, processus..." oninput="renderDecisionsTable()"/>
+        <select class="filter-sel" id="filter-dec-type" onchange="renderDecisionsTable()">
+          <option value="">Tous types</option><option value="RECONNEXION">RECONNEXION</option><option value="CORRECTION">CORRECTION</option><option value="OPTIMISATION">OPTIMISATION</option><option value="ANOMALIE">ANOMALIE</option>
+        </select>
+        <select class="filter-sel" id="filter-dec-prio" onchange="renderDecisionsTable()">
+          <option value="">Toutes priorités</option><option value="1">Priorité 1</option><option value="2">Priorité 2</option><option value="3">Priorité 3</option>
+        </select>
+      </div>
+      <div id="table-decisions"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <!-- OPPORTUNITÉS -->
+  <div class="page" id="page-opportunites">
+    <div class="topbar">
+      <div><div class="pg-title">Opportunités RPA</div><div class="pg-sub">Scoring multi-critères — Toutes les opportunités identifiées</div></div>
+      <button class="btn" onclick="loadOpportunites()">↻ Actualiser</button>
+    </div>
+    <div class="kpi-grid" id="opp-kpi"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title">Répartition par catégorie</div><div class="card-sub">Types d'opportunités identifiées</div>
+      <div class="chart-wrap"><canvas id="chart-opp-cat"></canvas></div>
+    </div>
+    <div class="sec-title">Liste complète des opportunités</div>
+    <div class="card">
+      <div class="filter-bar">
+        <input class="search-inp" id="search-opp" placeholder="🔍 Titre, robot RPA..." oninput="renderOpportunites()"/>
+        <select class="filter-sel" id="filter-opp-cat" onchange="renderOpportunites()">
+          <option value="">Toutes catégories</option><option value="AUTOMATISATION_RPA">AUTOMATISATION RPA</option><option value="CORRECTION_PROACTIVE">CORRECTION PROACTIVE</option><option value="OPTIMISATION_PROCESSUS">OPTIMISATION PROCESSUS</option>
+        </select>
+      </div>
+      <div id="table-opp"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <!-- ALERTES -->
+  <div class="page" id="page-alertes">
+    <div class="topbar">
+      <div><div class="pg-title">Alertes</div><div class="pg-sub">Anomalies critiques et interventions urgentes</div></div>
+      <button class="btn" onclick="loadAlertes()">↻ Actualiser</button>
+    </div>
+    <div class="kpi-grid" id="alertes-kpi"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="sec-title">Alertes actives</div>
+    <div class="filter-bar" style="margin-bottom:14px">
+      <button class="btn btn-primary" onclick="renderAlertes('tous')">Toutes</button>
+      <button class="btn" onclick="renderAlertes('critique')">🔴 CRITIQUES</button>
+      <button class="btn" onclick="renderAlertes('haute')">🟠 HAUTES</button>
+    </div>
+    <div id="alertes-list"><div class="loader"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="page" id="page-status">
+    <div class="topbar">
+      <div><div class="pg-title">Statut système</div><div class="pg-sub">Elasticsearch — Connexion et indices</div></div>
+      <button class="btn" onclick="loadStatus()">↻ Actualiser</button>
+    </div>
+    <div id="status-content"><div class="loader"><div class="spinner"></div>Vérification...</div></div>
+  </div>
+</div>
+
+<script>
+Chart.defaults.color='#7a839a';Chart.defaults.borderColor='#f0f2f5';Chart.defaults.font.family="'Segoe UI',Arial,sans-serif";Chart.defaults.font.size=12;
+const CHARTS={};const COLORS=['#1565c0','#1a7a4a','#c0392b','#b8860b','#6a1b9a','#d35400','#0277bd','#2e7d32'];
+const PAG={anomalies:{page:1,pp:25},decisions:{page:1,pp:25},opportunites:{page:1,pp:25}};
+let DATA={anomalies:[],decisions:[],opportunites:[],alertes:[]};
+
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn)btn.classList.add('active');
+  ({dashboard:loadDashboard,logs:loadLogs,anomalies:loadAnomalies,decisions:loadDecisions,opportunites:loadOpportunites,alertes:loadAlertes,status:loadStatus}[id]||function(){})();
+}
+
+async function api(p){const r=await fetch(p);if(!r.ok)throw new Error(r.status);return r.json();}
+function loader(el){el.innerHTML='<div class="loader"><div class="spinner"></div>Chargement...</div>';}
+function mkChart(id,type,labels,datasets,opts={}){
+  const c=document.getElementById(id);if(!c)return;
+  if(CHARTS[id])CHARTS[id].destroy();
+  CHARTS[id]=new Chart(c.getContext('2d'),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:12}}},...opts}});
+}
+function fmt(n){return Number(n||0).toLocaleString('fr-FR');}
+function badge(v,t='impact'){
+  const maps={impact:{CRITIQUE:'b-red',HAUT:'b-orange',MOYEN:'b-blue',FAIBLE:'b-green'},
+    type:{RECONNEXION:'b-blue',CORRECTION:'b-red',OPTIMISATION:'b-purple',ANOMALIE:'b-orange'},
+    prio:{'1':'b-red','2':'b-orange','3':'b-blue'},
+    cat:{AUTOMATISATION_RPA:'b-blue',CORRECTION_PROACTIVE:'b-red',OPTIMISATION_PROCESSUS:'b-purple'}};
+  const cls=(maps[t]||{})[String(v)]||'b-grey';
+  const txt=t==='prio'?'P'+v:t==='cat'?(v||'').replaceAll('_',' '):(v||'—');
+  return `<span class="badge ${cls}">${txt}</span>`;
+}
+function kpiCard(color,icon,label,val,sub){
+  return `<div class="kpi-card ${color}"><div class="kpi-top"><div class="kpi-icon">${icon}</div></div><div class="kpi-label">${label}</div><div class="kpi-value">${val}</div><div class="kpi-sub">${sub}</div></div>`;
+}
+
+async function checkES(){
+  try{const s=await api('/api/status');const ok=s.elasticsearch;
+    document.getElementById('sidebar-dot').className='sb-dot'+(ok?' online':'');
+    document.getElementById('es-banner').className=ok?'es-banner hidden':'es-banner';
+  }catch(e){}
+}
+
+// DASHBOARD
+async function loadDashboard(){
+  await checkES();await loadKPIs();await loadHeures();await loadAgChart();await loadErrChart('chart-erreurs-db');
+}
+async function loadKPIs(){
+  const g=document.getElementById('kpi-grid');
+  try{const d=await api('/api/kpis');
+    g.innerHTML=kpiCard('c-blue','📋','Logs analysés',fmt(d.total_logs),'Dataset Attijari Bank')
+      +kpiCard('c-green','✅','Taux de succès',d.taux_succes_pct+'%',fmt(d.succes)+' succès')
+      +kpiCard('c-red','❌',"Taux d'échec",d.taux_echec_pct+'%',fmt(d.echecs)+' échecs')
+      +kpiCard('c-gold','⏱️','Durée moyenne',d.duree_moy_sec+'s','par action')
+      +kpiCard('c-purple','🤖','Décisions RPA',fmt(d.decisions_rpa),'R001 → R009')
+      +kpiCard('c-orange','🔍','Anomalies ML',fmt(d.anomalies),'Isolation Forest 5%')
+      +kpiCard('c-green','💰','Gain temps estimé',d.gain_min+'m',(d.gain_min/60).toFixed(1)+' heures')
+      +kpiCard('c-blue','🚀','Opportunités RPA',fmt(d.opportunites),d.gain_cout+' TND estimés');
+  }catch(e){g.innerHTML='<div class="loader">⚠️ Erreur KPIs — vérifiez que Docker est lancé</div>';}
+}
+async function loadHeures(){
+  try{const d=await api('/api/logs/heures');
+    mkChart('chart-heures','line',d.map(x=>x.heure+'h'),[
+      {label:'Total',data:d.map(x=>x.total),borderColor:'#1565c0',backgroundColor:'rgba(21,101,192,0.08)',fill:true,tension:.4,borderWidth:2},
+      {label:'Échecs',data:d.map(x=>x.echecs),borderColor:'#c0392b',backgroundColor:'rgba(192,57,43,0.08)',fill:true,tension:.4,borderWidth:2}
+    ],{plugins:{legend:{position:'top'}}});
+  }catch(e){}
+}
+async function loadAgChart(){
+  try{const d=await api('/api/logs/agences');
+    mkChart('chart-agences-db','bar',d.slice(0,10).map(x=>x.agence),[
+      {label:"Taux échec %",data:d.slice(0,10).map(x=>x.taux_echec_pct),backgroundColor:d.slice(0,10).map(x=>x.taux_echec_pct>35?'rgba(192,57,43,.75)':x.taux_echec_pct>25?'rgba(211,84,0,.75)':'rgba(26,122,74,.75)'),borderRadius:6}
+    ],{indexAxis:'y',plugins:{legend:{display:false}}});
+  }catch(e){}
+}
+async function loadErrChart(id){
+  try{const d=await api('/api/logs/erreurs');
+    mkChart(id,'doughnut',d.map(x=>x.code),[{data:d.map(x=>x.count),backgroundColor:COLORS,borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
+  }catch(e){}
+}
+
+// LOGS
+async function loadLogs(){await loadActChart();await loadErrChart('chart-erreurs-lg');await loadAgTable();}
+async function loadActChart(){
+  try{const d=await api('/api/logs/actions_echouees');
+    mkChart('chart-actions','bar',d.map(x=>x.action),[{label:'Échecs',data:d.map(x=>x.count),backgroundColor:'rgba(192,57,43,.75)',borderRadius:6}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:35}}}});
+  }catch(e){}
+}
+async function loadAgTable(){
+  const el=document.getElementById('agences-progress');
+  try{const d=await api('/api/logs/agences');
+    el.innerHTML=d.map(x=>`<div class="prog-row"><div class="prog-label">${x.agence}</div><div class="prog-bar"><div class="prog-fill" style="width:${x.taux_echec_pct}%;background:${x.taux_echec_pct>35?'#c0392b':x.taux_echec_pct>25?'#d35400':'#1a7a4a'}"></div></div><div class="prog-val">${x.taux_echec_pct}%</div></div>`).join('');
+  }catch(e){el.innerHTML='<div class="loader">⚠️ Erreur</div>';}
+}
+
+// ANOMALIES
+async function loadAnomalies(){
+  const kpi=document.getElementById('anomalies-kpi');loader(kpi);
+  try{const d=await api('/api/anomalies');DATA.anomalies=d.liste;
+    kpi.innerHTML=kpiCard('c-red','🔍','Total anomalies',fmt(d.total),'5% des logs')
+      +kpiCard('c-red','🚨','CRITIQUES',fmt(d.critiques),'score < -0.2')
+      +kpiCard('c-orange','⚠️','HAUTES',fmt(d.hauts),'score ≥ -0.2')
+      +kpiCard('c-blue','👥','Users anormaux',fmt(d.top_users.length),'utilisateurs concernés');
+    mkChart('chart-anom-users','bar',d.top_users.map(x=>x.user),[{label:'Anomalies',data:d.top_users.map(x=>x.count),backgroundColor:'rgba(192,57,43,.75)',borderRadius:6}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:30}}}});
+    mkChart('chart-anom-agences','bar',d.top_agences.map(x=>x.agence),[{label:'Anomalies',data:d.top_agences.map(x=>x.count),backgroundColor:'rgba(211,84,0,.75)',borderRadius:6}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:30}}}});
+    PAG.anomalies.page=1;renderAnomaliesTable();
+  }catch(e){kpi.innerHTML='<div class="loader">⚠️ Erreur — vérifiez resultats_phase2.json</div>';}
+}
+function filterAnom(){
+  const q=document.getElementById('search-anom').value.toLowerCase();
+  const fi=document.getElementById('filter-anom-impact').value;
+  return DATA.anomalies.filter(a=>(!q||(a.user_id||'').toLowerCase().includes(q)||(a.processus||'').toLowerCase().includes(q)||(a.action||'').toLowerCase().includes(q))&&(!fi||a.impact===fi));
+}
+function renderAnomaliesTable(){
+  const el=document.getElementById('table-anomalies');
+  const data=filterAnom();const p=PAG.anomalies;
+  const total=data.length;const start=(p.page-1)*p.pp;const page=data.slice(start,start+p.pp);
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Utilisateur</th><th>Agence</th><th>Action</th><th>Processus</th><th>Durée (s)</th><th>Score</th><th>Succès</th><th>Erreur</th><th>Impact</th></tr></thead><tbody>
+    ${page.map(a=>`<tr><td><strong>${a.user_id||'—'}</strong></td><td>${a.agence||'—'}</td><td>${a.action||'—'}</td><td>${a.processus||'—'}</td><td>${a.duree_sec||'—'}</td><td><code>${a.score_anomalie||'—'}</code></td><td>${a.success?'<span class="badge b-green">✅</span>':'<span class="badge b-red">❌</span>'}</td><td><code>${a.error_code||'—'}</code></td><td>${badge(a.impact,'impact')}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="pagination"><div class="pag-info">Affichage ${start+1}–${Math.min(start+p.pp,total)} sur ${total}</div>
+    <div class="pag-btns"><button class="pag-btn" onclick="pagA(-1)" ${p.page===1?'disabled':''}>← Préc.</button><button class="pag-btn" onclick="pagA(1)" ${start+p.pp>=total?'disabled':''}>Suiv. →</button></div></div>`;
+}
+function pagA(d){PAG.anomalies.page+=d;renderAnomaliesTable();}
+
+// DÉCISIONS
+async function loadDecisions(){
+  const kpi=document.getElementById('decisions-kpi');loader(kpi);
+  try{const d=await api('/api/decisions');DATA.decisions=d.liste;
+    const p1=(d.par_prio.find(x=>x.label==='Priorité 1')||{value:0}).value;
+    const p2=(d.par_prio.find(x=>x.label==='Priorité 2')||{value:0}).value;
+    const p3=(d.par_prio.find(x=>x.label==='Priorité 3')||{value:0}).value;
+    kpi.innerHTML=kpiCard('c-gold','⚙️','Total décisions',fmt(d.total),'R001 → R009')
+      +kpiCard('c-red','🔴','Priorité 1',fmt(p1),'Urgentes')
+      +kpiCard('c-orange','🟠','Priorité 2',fmt(p2),'Hautes')
+      +kpiCard('c-blue','🔵','Priorité 3',fmt(p3),'Normales');
+    mkChart('chart-dec-type','doughnut',d.par_type.map(x=>x.label),[{data:d.par_type.map(x=>x.value),backgroundColor:COLORS,borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
+    mkChart('chart-dec-source','bar',d.par_source.map(x=>x.label),[{label:'Décisions',data:d.par_source.map(x=>x.value),backgroundColor:COLORS,borderRadius:8}],{plugins:{legend:{display:false}}});
+    PAG.decisions.page=1;renderDecisionsTable();
+  }catch(e){kpi.innerHTML='<div class="loader">⚠️ Erreur — vérifiez decisions_phase3.json</div>';}
+}
+function filterDec(){
+  const q=document.getElementById('search-dec').value.toLowerCase();
+  const ft=document.getElementById('filter-dec-type').value;
+  const fp=document.getElementById('filter-dec-prio').value;
+  return DATA.decisions.filter(d=>(!q||(d.robot||'').toLowerCase().includes(q)||(d.processus||'').toLowerCase().includes(q))&&(!ft||d.type_robot===ft)&&(!fp||String(d.priorite)===fp));
+}
+function renderDecisionsTable(){
+  const el=document.getElementById('table-decisions');
+  const data=filterDec();const p=PAG.decisions;
+  const total=data.length;const start=(p.page-1)*p.pp;const page=data.slice(start,start+p.pp);
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Règle</th><th>Priorité</th><th>Robot</th><th>Processus</th><th>Type</th><th>Source</th><th>Occurrences</th><th>Gain (min)</th><th>Statut</th></tr></thead><tbody>
+    ${page.map(d=>`<tr><td>${badge(d.regle_id,'gold')||'<span class="badge b-gold">'+d.regle_id+'</span>'}</td><td>${badge(d.priorite,'prio')}</td><td><code>${d.robot||'—'}</code></td><td>${d.processus||'—'}</td><td>${badge(d.type_robot,'type')}</td><td>${d.source||'—'}</td><td><strong>${fmt(d.nb_occurrences)}</strong></td><td>${d.gain_temps_min||0} min</td><td><span class="badge ${d.statut_final==='SUCCES'?'b-green':'b-orange'}">${d.statut_final||'—'}</span></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="pagination"><div class="pag-info">Affichage ${start+1}–${Math.min(start+p.pp,total)} sur ${total}</div>
+    <div class="pag-btns"><button class="pag-btn" onclick="pagD(-1)" ${p.page===1?'disabled':''}>← Préc.</button><button class="pag-btn" onclick="pagD(1)" ${start+p.pp>=total?'disabled':''}>Suiv. →</button></div></div>`;
+}
+function pagD(d){PAG.decisions.page+=d;renderDecisionsTable();}
+
+// OPPORTUNITÉS
+async function loadOpportunites(){
+  const kpi=document.getElementById('opp-kpi');loader(kpi);
+  try{const d=await api('/api/opportunites');DATA.opportunites=d.liste;
+    kpi.innerHTML=kpiCard('c-gold','🚀','Opportunités',fmt(d.total),'identifiées')
+      +kpiCard('c-green','⏱️','Gain temps',d.gain_total+'m',(d.gain_total/60).toFixed(1)+' heures')
+      +kpiCard('c-blue','💰','Gain coût',d.cout_total+' TND','estimés')
+      +kpiCard('c-purple','📈','ROI annuel',fmt(d.roi_annuel)+' TND','projeté');
+    mkChart('chart-opp-cat','bar',d.par_cat.map(x=>x.label.replaceAll('_',' ')),[{label:'Opportunités',data:d.par_cat.map(x=>x.value),backgroundColor:COLORS,borderRadius:10}],{plugins:{legend:{display:false}}});
+    PAG.opportunites.page=1;renderOpportunites();
+  }catch(e){kpi.innerHTML='<div class="loader">⚠️ Erreur — vérifiez resultats_phase2.json</div>';}
+}
+function filterOpp(){
+  const q=document.getElementById('search-opp').value.toLowerCase();
+  const fc=document.getElementById('filter-opp-cat').value;
+  return DATA.opportunites.filter(o=>(!q||(o.titre||'').toLowerCase().includes(q)||(o.robot_rpa||'').toLowerCase().includes(q))&&(!fc||o.categorie===fc));
+}
+function renderOpportunites(){
+  const el=document.getElementById('table-opp');
+  const data=filterOpp();const p=PAG.opportunites;
+  const total=data.length;const start=(p.page-1)*p.pp;const page=data.slice(start,start+p.pp);
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Catégorie</th><th>Titre</th><th>Robot RPA</th><th>Score</th><th>Occurrences</th><th>Gain (min)</th><th>Gain (TND)</th><th>ROI/an</th></tr></thead><tbody>
+    ${page.map(o=>`<tr><td>${badge(o.categorie,'cat')}</td><td>${o.titre||'—'}</td><td><code>${o.robot_rpa||'—'}</code></td><td><strong>${o.score_composite||'—'}</strong></td><td>${fmt(o.nb_occurrences)}</td><td>${o.gain_temps_min||0} min</td><td>${o.gain_cout_tnd||0} TND</td><td><span class="badge b-green">${o.roi_estime||'—'}</span></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="pagination"><div class="pag-info">Affichage ${start+1}–${Math.min(start+p.pp,total)} sur ${total}</div>
+    <div class="pag-btns"><button class="pag-btn" onclick="pagO(-1)" ${p.page===1?'disabled':''}>← Préc.</button><button class="pag-btn" onclick="pagO(1)" ${start+p.pp>=total?'disabled':''}>Suiv. →</button></div></div>`;
+}
+function pagO(d){PAG.opportunites.page+=d;renderOpportunites();}
+
+// ALERTES
+async function loadAlertes(){
+  const kpi=document.getElementById('alertes-kpi');const el=document.getElementById('alertes-list');
+  loader(kpi);loader(el);
+  try{const d=await api('/api/alertes');DATA.alertes=d.liste;
+    const nb=document.getElementById('nav-badge-alertes');
+    if(nb&&d.total>0){nb.textContent=d.total;nb.classList.add('show');}
+    kpi.innerHTML=kpiCard('c-red','🚨','Total alertes',fmt(d.total),'nécessitent attention')
+      +kpiCard('c-red','🔴','CRITIQUES',fmt(d.critiques),'intervention immédiate')
+      +kpiCard('c-orange','🟠','HAUTES',fmt(d.hautes),'intervention rapide')
+      +kpiCard('c-green','✅','Résolues','0','cette session');
+    renderAlertes('tous');
+  }catch(e){kpi.innerHTML='<div class="loader">⚠️ Erreur alertes</div>';}
+}
+function renderAlertes(filtre){
+  const el=document.getElementById('alertes-list');
+  let data=DATA.alertes;
+  if(filtre==='critique')data=data.filter(a=>a.niveau==='CRITIQUE');
+  if(filtre==='haute')data=data.filter(a=>a.niveau==='HAUTE');
+  if(!data.length){el.innerHTML='<div class="loader">✅ Aucune alerte pour ce filtre</div>';return;}
+  el.innerHTML='<div class="alert-list">'+data.map(a=>`
+    <div class="alert-item ${a.niveau.toLowerCase()}">
+      <div class="alert-ico">${a.niveau==='CRITIQUE'?'🚨':'⚠️'}</div>
+      <div class="alert-body">
+        <div class="alert-titre">${a.titre}</div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-meta">
+          <span>🤖 ${a.robot}</span><span>🏦 ${a.agence}</span>
+          <span>${a.niveau==='CRITIQUE'?'<span class="badge b-red">CRITIQUE</span>':'<span class="badge b-orange">HAUTE</span>'}</span>
+          <span>📋 ${a.type}</span><span>🆔 <code>${a.id}</code></span>
+        </div>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+// STATUS
+async function loadStatus(){
+  const el=document.getElementById('status-content');loader(el);
+  try{const s=await api('/api/status');const ok=s.elasticsearch;
+    el.innerHTML=`<div class="status-card"><div class="status-ico ${ok?'ok':'err'}">${ok?'✅':'❌'}</div><div><div class="status-lbl ${ok?'ok':'err'}">Elasticsearch ${ok?'CONNECTÉ':'DÉCONNECTÉ'}</div><div class="status-url">http://localhost:9200 — ${s.timestamp}</div></div></div>`
+    +(ok&&s.indices.length?`<div class="sec-title" style="margin-top:0">Indices Attijari</div><div class="card"><table><thead><tr><th>Index</th><th>Documents</th><th>Statut</th></tr></thead><tbody>${s.indices.map(i=>`<tr><td><code>${i.index}</code></td><td><strong>${fmt(i.docs)}</strong></td><td><span class="badge b-green">ACTIF</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="loader">${ok?'Aucun index Attijari trouvé':'⚠️ Lancez Docker : docker-compose up -d'}</div>`)
+    +`<div class="sec-title">Fichiers JSON locaux</div><div class="card"><div class="stat-list" id="json-files"><div class="loader"><div class="spinner"></div></div></div></div>`;
+    try{const k=await api('/api/kpis');document.getElementById('json-files').innerHTML=
+      `<div class="stat-item"><div class="stat-name">📁 resultats_phase2.json</div><div class="stat-count">${k.repetitions+k.erreurs+k.goulots+k.anomalies+k.opportunites} entrées</div></div>
+       <div class="stat-item"><div class="stat-name">📁 decisions_phase3.json</div><div class="stat-count">${k.decisions_rpa} décisions</div></div>`;}catch(e){}
+  }catch(e){el.innerHTML='<div class="loader">⚠️ Erreur Flask</div>';}
+}
+
+// INIT
+window.addEventListener('DOMContentLoaded',async()=>{
+  await checkES();loadDashboard();
+  try{const a=await api('/api/alertes');const nb=document.getElementById('nav-badge-alertes');if(nb&&a.total>0){nb.textContent=a.total;nb.classList.add('show');}}catch(e){}
+  setInterval(checkES,60000);
+});
+</script>
+</body>
+</html>
