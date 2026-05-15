@@ -1,4 +1,4 @@
-# simulator.py
+# producer.py (MODIFIÉ)
 import json
 import time
 import random
@@ -12,7 +12,12 @@ KAFKA_HOST = os.getenv('KAFKA_HOST', 'kafka:29092')
 SIM_INTERVAL = float(os.getenv('SIM_INTERVAL', 1.0))
 SIM_BURST = int(os.getenv('SIM_BURST', 1))
 
-es = Elasticsearch([ES_HOST])
+# ✅ FIX: Spécifier la version ES compatible
+es = Elasticsearch(
+    [ES_HOST],
+    api_key=None,
+    headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+)
 
 # Kafka Producer
 kafka_producer = KafkaProducer(
@@ -26,12 +31,12 @@ def generate_log():
     error_codes = ['NONE', 'ERR_001', 'ERR_101', 'ERR_201', 'ERR_301', 'ERR_401']
     
     return {
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
         'user_id': f'USER_{random.randint(1000, 2000)}',
         'processus': random.choice(['VIREMENTS', 'DEPOTS', 'RETRAITS', 'CONSULTATIONS']),
         'action': random.choice(actions),
         'error_code': random.choice(error_codes),
-        'success': str(random.choice([True, False, True, True])),
+        'success': random.choice([True, False, True, True]),  # ✅ Booléen, pas string
         'duree_action_sec': round(random.uniform(0.5, 45), 2),
         'ip': f'192.168.{random.randint(0, 255)}.{random.randint(0, 255)}',
         'user_agent': random.choice(['Firefox', 'Chrome', 'Safari', 'Edge']),
@@ -39,7 +44,7 @@ def generate_log():
     }
 
 def main():
-    print("🚀 Simulator started with Kafka support...")
+    print("🚀 Producer started with Kafka support...")
     print(f"   Elasticsearch: {ES_HOST}")
     print(f"   Kafka: {KAFKA_HOST}")
     
@@ -48,18 +53,21 @@ def main():
             for _ in range(SIM_BURST):
                 log = generate_log()
                 
-                # ✅ Envoyer à Elasticsearch
-                es.index(index='attijari-logs', document=log)
-                
-                # ✅ Envoyer à Kafka
-                kafka_producer.send('attijari-logs', value=log)
-                
-                print(f"✅ Log créé: {log['action']} | {log['processus']} | {log['error_code']}")
+                try:
+                    # ✅ Envoyer à Elasticsearch
+                    es.index(index='attijari-logs', document=log)
+                    
+                    # ✅ Envoyer à Kafka
+                    kafka_producer.send('attijari-logs', value=log)
+                    
+                    print(f"✅ Log: {log['action']:20} | {log['processus']:15} | {log['error_code']:10}")
+                except Exception as e:
+                    print(f"❌ Erreur: {e}")
             
             time.sleep(SIM_INTERVAL)
     
     except KeyboardInterrupt:
-        print("\n⛔ Simulator arrêté")
+        print("\n⛔ Producer arrêté")
     finally:
         kafka_producer.close()
 
