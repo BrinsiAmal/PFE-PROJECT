@@ -1,12 +1,11 @@
 services:
-
+ 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - xpack.security.http.ssl.enabled=false
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ports:
       - "9200:9200"
@@ -15,12 +14,11 @@ services:
     networks:
       - elk
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
-      interval: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 60s
-
+      retries: 5
+ 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.12.0
     container_name: kibana
@@ -33,7 +31,7 @@ services:
         condition: service_healthy
     networks:
       - elk
-
+ 
   n8n:
     image: n8nio/n8n
     container_name: n8n
@@ -46,25 +44,31 @@ services:
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - WEBHOOK_URL=http://localhost:5678
+      - N8N_EMAIL_MODE=smtp
+      - N8N_SMTP_HOST=smtp.gmail.com
+      - N8N_SMTP_PORT=587
+      - N8N_SMTP_USER=brinsi.amal24@gmail.com
+      - N8N_SMTP_PASS=${PFE_2026_ISETN}   
+      - N8N_SMTP_SENDER=brinsi.amal24@gmail.com
     volumes:
       - n8n_data:/home/node/.n8n
-      - .:/home/node/.n8n-files
+      - C:/pfe:/home/node/.n8n-files
     depends_on:
       elasticsearch:
         condition: service_healthy
     networks:
       - elk
-
+ 
   flask:
     image: python:3.11-slim
     container_name: flask-app
     working_dir: /app
     command: >
-      sh -c "pip install flask==3.0.0 elasticsearch==8.12.0 --quiet && python app.py"
+      sh -c "pip install flask elasticsearch --quiet && python app.py"
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
+      - C:/pfe:/app
     environment:
       - ES_HOST=http://elasticsearch:9200
       - FLASK_ENV=development
@@ -74,11 +78,29 @@ services:
     networks:
       - elk
     restart: unless-stopped
-
+  simulator:
+    image: python:3.11-slim
+    container_name: log-simulator
+    working_dir: /app
+    command: >
+      sh -c "pip install elasticsearch --quiet && python simulator.py"
+    volumes:
+      - C:/pfe:/app
+    environment:
+      - ES_HOST=http://elasticsearch:9200
+      - SIM_INTERVAL=1.0   
+      - SIM_BURST=1        
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+    restart: unless-stopped
+ 
 volumes:
   es_data:
   n8n_data:
-
+ 
 networks:
   elk:
     driver: bridge

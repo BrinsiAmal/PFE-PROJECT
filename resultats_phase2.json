@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-05T10:33:21.178513",
+  "timestamp": "2026-05-11T21:58:11.190462",
   "elasticsearch": {
     "status": "INDEXED",
     "index": "attijari-logs-enriched",

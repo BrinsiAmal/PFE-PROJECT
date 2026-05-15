@@ -6,22 +6,21 @@
 <title>Attijari Bank — Système RPA</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
-/* ══ RESET ══ */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;color:#1a1f2e;min-height:100vh;display:flex}
 
-/* ══ SIDEBAR ══ */
-.sidebar{width:240px;min-height:100vh;background:#1a3a6b;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,0.15)}
-.sb-header{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,0.1)}
+/* SIDEBAR */
+.sidebar{width:240px;min-height:100vh;background:#1a3a6b;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,.15)}
+.sb-header{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
 .sb-logo{display:flex;align-items:center;gap:12px}
 .sb-icon{width:42px;height:42px;background:#b8860b;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .sb-title{font-size:15px;font-weight:700;color:#fff;line-height:1.2}
-.sb-sub{font-size:10px;color:rgba(255,255,255,0.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
 .sb-section{padding:16px 12px 6px}
-.sb-label{font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(255,255,255,0.3);text-transform:uppercase;padding:0 6px;margin-bottom:8px}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:none;color:rgba(255,255,255,0.6);font-size:13.5px;font-weight:500;border-radius:8px;cursor:pointer;text-align:left;margin-bottom:2px;position:relative;transition:all .18s;font-family:'Segoe UI',Arial,sans-serif}
-.nav-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
-.nav-btn.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
+.sb-label{font-size:10px;font-weight:600;letter-spacing:2px;color:rgba(255,255,255,.3);text-transform:uppercase;padding:0 6px;margin-bottom:8px}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;background:none;color:rgba(255,255,255,.6);font-size:13.5px;font-weight:500;border-radius:8px;cursor:pointer;text-align:left;margin-bottom:2px;position:relative;transition:all .18s;font-family:'Segoe UI',Arial,sans-serif}
+.nav-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-btn.active{background:rgba(255,255,255,.15);color:#fff;font-weight:600}
 .nav-btn.active::before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:3px;background:#b8860b;border-radius:0 3px 3px 0}
 .nav-icon{font-size:16px;width:20px;text-align:center}
 .nav-badge{margin-left:auto;background:#c0392b;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:none}
@@ -29,31 +28,45 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;c
 .sb-dot{width:7px;height:7px;border-radius:50%;background:#c0392b;margin-left:auto;animation:pulse 2s infinite}
 .sb-dot.online{background:#22c55e}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.25);text-align:center;line-height:1.7}
+.sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.25);text-align:center;line-height:1.7}
 
-/* ══ MAIN ══ */
+/* AUTO-REFRESH INDICATOR */
+.refresh-ring{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#22c55e;border-radius:50%;margin-left:6px;vertical-align:middle;animation:spin 2s linear infinite}
+.refresh-countdown{font-size:10px;color:rgba(255,255,255,.4);text-align:center;margin-top:6px}
+
+/* MAIN */
 .main{margin-left:240px;padding:28px 32px;flex:1;min-height:100vh}
 .page{display:none}
 .page.active{display:block;animation:fadein .25s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ══ TOPBAR ══ */
+/* TOPBAR */
 .topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
 .pg-title{font-size:26px;font-weight:700;color:#1a1f2e}
 .pg-sub{font-size:13px;color:#7a839a;margin-top:3px}
+.topbar-right{display:flex;align-items:center;gap:10px}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#3d4560;font-size:13px;font-weight:500;cursor:pointer;font-family:'Segoe UI',Arial,sans-serif;transition:all .18s}
 .btn:hover{border-color:#1a3a6b;color:#1a3a6b}
 .btn-primary{background:#1a3a6b;color:#fff;border-color:#1a3a6b}
 .btn-primary:hover{background:#142d54;color:#fff}
 
-/* ══ BANNER ES ══ */
+/* LIVE BADGE */
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:#eaf7f1;border:1px solid #22c55e;color:#1a7a4a;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;letter-spacing:.5px}
+.live-dot{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:pulse 1s infinite}
+
+/* REFRESH TIMER */
+.timer-bar{height:3px;background:#dde2ec;border-radius:2px;overflow:hidden;margin-bottom:20px}
+.timer-fill{height:100%;background:linear-gradient(90deg,#1565c0,#22c55e);border-radius:2px;transition:width 1s linear}
+
+/* ES BANNER */
 .es-banner{display:flex;align-items:center;gap:10px;background:#fdf0ee;border:1px solid #f5b4ac;border-radius:10px;padding:12px 16px;margin-bottom:20px;color:#c0392b;font-size:13px;font-weight:500}
 .es-banner.hidden{display:none}
 
-/* ══ KPI GRID ══ */
+/* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
-.kpi-card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
-.kpi-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.09)}
+.kpi-card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.09)}
 .kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
 .kpi-card.c-blue::after{background:#1565c0}.kpi-card.c-green::after{background:#1a7a4a}
 .kpi-card.c-red::after{background:#c0392b}.kpi-card.c-gold::after{background:#b8860b}
@@ -69,16 +82,28 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f0f2f5;c
 .kpi-label{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:#7a839a}
 .kpi-value{font-size:28px;font-weight:700;color:#1a1f2e;margin:5px 0 3px;line-height:1}
 .kpi-sub{font-size:11px;color:#a0aab8}
+.kpi-trend{font-size:11px;font-weight:600;color:#22c55e}
 
-/* ══ CARDS ══ */
-.card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+/* LIVE FEED */
+.live-feed{background:#0d1117;border-radius:12px;padding:16px;font-family:'Courier New',monospace;font-size:12px;height:220px;overflow-y:auto;margin-bottom:20px}
+.live-feed .feed-row{display:flex;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);animation:fadein .3s ease}
+.feed-ts{color:#6e7681;min-width:85px}
+.feed-user{color:#79c0ff;min-width:45px;font-weight:600}
+.feed-ag{color:#d2a8ff;min-width:90px}
+.feed-action{color:#ffa657;min-width:130px}
+.feed-ok{color:#3fb950;font-weight:700}
+.feed-fail{color:#f85149;font-weight:700}
+.feed-dur{color:#6e7681}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .card-title{font-size:14px;font-weight:700;color:#1a1f2e;margin-bottom:3px}
 .card-sub{font-size:12px;color:#7a839a;margin-bottom:16px}
 .charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
 .chart-full{grid-column:1/-1}
 .chart-wrap{position:relative;height:240px}
 
-/* ══ TABLE ══ */
+/* TABLE */
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 thead tr{background:#f4f6f8}
@@ -87,34 +112,27 @@ td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f0f2f5;color:#1a1f2
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8f9fb}
 
-/* ══ BADGES ══ */
+/* BADGES */
 .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
-.b-red   {background:#fdf0ee;color:#c0392b}
-.b-orange{background:#fef5ee;color:#d35400}
-.b-green {background:#eaf7f1;color:#1a7a4a}
-.b-blue  {background:#e8f0fd;color:#1565c0}
-.b-purple{background:#f5eefb;color:#6a1b9a}
-.b-gold  {background:#fdf6e3;color:#b8860b}
+.b-red   {background:#fdf0ee;color:#c0392b}.b-orange{background:#fef5ee;color:#d35400}
+.b-green {background:#eaf7f1;color:#1a7a4a}.b-blue  {background:#e8f0fd;color:#1565c0}
+.b-purple{background:#f5eefb;color:#6a1b9a}.b-gold  {background:#fdf6e3;color:#b8860b}
 .b-grey  {background:#f0f2f5;color:#7a839a}
 
-/* ══ PROGRESS ══ */
+/* PROG */
 .prog-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
 .prog-label{font-size:12px;font-weight:500;color:#3d4560;min-width:130px}
 .prog-bar{flex:1;height:7px;background:#f0f2f5;border-radius:4px;overflow:hidden}
 .prog-fill{height:100%;border-radius:4px;transition:width .8s ease}
 .prog-val{font-size:12px;font-weight:600;color:#3d4560;min-width:36px;text-align:right}
 
-/* ══ SECTION TITLE ══ */
-.sec-title{font-size:13px;font-weight:700;color:#3d4560;margin:22px 0 14px;display:flex;align-items:center;gap:10px}
-.sec-title::after{content:'';flex:1;height:1px;background:#dde2ec}
-
-/* ══ FILTER BAR ══ */
+/* FILTER */
 .filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .search-inp{flex:1;min-width:200px;padding:8px 14px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#1a1f2e;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;outline:none;transition:border-color .2s}
 .search-inp:focus{border-color:#1a3a6b}
 .filter-sel{padding:8px 12px;border:1px solid #dde2ec;border-radius:8px;background:#fff;color:#3d4560;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;outline:none;cursor:pointer}
 
-/* ══ PAGINATION ══ */
+/* PAGINATION */
 .pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 0 0;border-top:1px solid #f0f2f5;margin-top:6px}
 .pag-info{font-size:12px;color:#7a839a}
 .pag-btns{display:flex;gap:6px}
@@ -122,11 +140,11 @@ tr:hover td{background:#f8f9fb}
 .pag-btn:hover{border-color:#1a3a6b;color:#1a3a6b}
 .pag-btn:disabled{opacity:.4;cursor:default;pointer-events:none}
 
-/* ══ ALERTES ══ */
+/* ALERTES */
 .alert-list{display:flex;flex-direction:column;gap:10px}
-.alert-item{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.alert-item{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .alert-item.critique{border-left:4px solid #c0392b;background:#fffbfb}
-.alert-item.haute{border-left:4px solid #d35400;background:#fffdf9}
+.alert-item.haute   {border-left:4px solid #d35400;background:#fffdf9}
 .alert-ico{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
 .alert-item.critique .alert-ico{background:#fdf0ee}
 .alert-item.haute    .alert-ico{background:#fef5ee}
@@ -136,22 +154,22 @@ tr:hover td{background:#f8f9fb}
 .alert-meta{display:flex;gap:12px;flex-wrap:wrap}
 .alert-meta span{font-size:11px;color:#a0aab8}
 
-/* ══ STATUS ══ */
+/* STATUS */
 .status-card{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:18px;margin-bottom:20px}
 .status-ico{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px}
 .status-ico.ok{background:#eaf7f1}.status-ico.err{background:#fdf0ee}
 .status-lbl{font-size:17px;font-weight:700}
 .status-lbl.ok{color:#1a7a4a}.status-lbl.err{color:#c0392b}
 .status-url{font-size:12px;color:#7a839a;margin-top:3px}
-.stat-list{display:flex;flex-direction:column;gap:8px}
-.stat-item{display:flex;align-items:center;justify-content:space-between;background:#f4f6f8;border:1px solid #dde2ec;border-radius:8px;padding:10px 14px}
+.stat-item{display:flex;align-items:center;justify-content:space-between;background:#f4f6f8;border:1px solid #dde2ec;border-radius:8px;padding:10px 14px;margin-bottom:8px}
 .stat-name{font-size:13px;font-weight:500;color:#3d4560}
 .stat-count{font-size:17px;font-weight:700;color:#1a3a6b}
+.sec-title{font-size:13px;font-weight:700;color:#3d4560;margin:22px 0 14px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:'';flex:1;height:1px;background:#dde2ec}
 
-/* ══ LOADER ══ */
+/* LOADER */
 .loader{display:flex;align-items:center;justify-content:center;height:100px;color:#7a839a;font-size:13px;gap:10px}
 .spinner{width:18px;height:18px;border-radius:50%;border:2px solid #dde2ec;border-top-color:#1a3a6b;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;padding:2px 6px;border-radius:4px;color:#1a3a6b}
 </style>
 </head>
@@ -172,6 +190,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
   <div class="sb-section">
     <div class="sb-label">Analyse</div>
     <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
+    <button class="nav-btn" onclick="showPage('live',this)"><span class="nav-icon">🔴</span>Logs Live<span class="refresh-ring"></span></button>
     <button class="nav-btn" onclick="showPage('logs',this)"><span class="nav-icon">📋</span>Logs Bancaires</button>
     <button class="nav-btn" onclick="showPage('anomalies',this)"><span class="nav-icon">🔍</span>Anomalies ML</button>
   </div>
@@ -188,18 +207,27 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
     <button class="nav-btn" onclick="showPage('status',this)"><span class="nav-icon">⚙️</span>Statut ES<span class="sb-dot" id="sidebar-dot"></span></button>
   </div>
 
-  <div class="sb-footer">Phase 2 · Phase 3 · Phase 4<br/>Elasticsearch · n8n · Kibana</div>
+  <div class="sb-footer">
+    Auto-refresh : <strong id="countdown">60</strong>s<br/>
+    Phase 2 · Phase 3 · Phase 4<br/>Elasticsearch · n8n · Kibana
+  </div>
 </aside>
 
 <!-- MAIN -->
 <div class="main">
+  <!-- Progress bar de refresh -->
+  <div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
+
   <div class="es-banner hidden" id="es-banner">⚠️ <strong>Elasticsearch non disponible</strong> — Lancez : <code>docker-compose up -d</code></div>
 
   <!-- DASHBOARD -->
   <div class="page active" id="page-dashboard">
     <div class="topbar">
-      <div><div class="pg-title">Vue d'ensemble</div><div class="pg-sub">Résultats temps réel — Elasticsearch + JSON Phase 2 &amp; 3</div></div>
-      <button class="btn" onclick="loadDashboard()">↻ Actualiser</button>
+      <div><div class="pg-title">Vue d'ensemble</div><div class="pg-sub">Refresh automatique toutes les 60 secondes</div></div>
+      <div class="topbar-right">
+        <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+        <button class="btn" onclick="loadDashboard()">↻ Actualiser</button>
+      </div>
     </div>
     <div class="kpi-grid" id="kpi-grid"><div class="loader"><div class="spinner"></div>Chargement...</div></div>
     <div class="charts-grid">
@@ -218,10 +246,26 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
     </div>
   </div>
 
+  <!-- LIVE LOGS -->
+  <div class="page" id="page-live">
+    <div class="topbar">
+      <div><div class="pg-title">Logs Temps Réel</div><div class="pg-sub">Flux live du simulateur — mise à jour automatique</div></div>
+      <div class="topbar-right">
+        <div class="live-badge"><div class="live-dot"></div>STREAMING</div>
+      </div>
+    </div>
+    <div class="kpi-grid" id="live-kpi"><div class="loader"><div class="spinner"></div></div></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📡 Flux de logs en direct</div>
+      <div class="card-sub" id="live-sub">Dernière mise à jour : —</div>
+      <div class="live-feed" id="live-feed"><div style="color:#6e7681;padding:20px;text-align:center">En attente de logs...</div></div>
+    </div>
+  </div>
+
   <!-- LOGS -->
   <div class="page" id="page-logs">
     <div class="topbar">
-      <div><div class="pg-title">Logs Bancaires</div><div class="pg-sub">Analyse des 10 000 logs — Elasticsearch</div></div>
+      <div><div class="pg-title">Logs Bancaires</div><div class="pg-sub">Analyse des logs — Elasticsearch / CSV</div></div>
       <button class="btn" onclick="loadLogs()">↻ Actualiser</button>
     </div>
     <div class="charts-grid">
@@ -284,7 +328,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
   <!-- OPPORTUNITÉS -->
   <div class="page" id="page-opportunites">
     <div class="topbar">
-      <div><div class="pg-title">Opportunités RPA</div><div class="pg-sub">Scoring multi-critères — Toutes les opportunités identifiées</div></div>
+      <div><div class="pg-title">Opportunités RPA</div><div class="pg-sub">Scoring multi-critères</div></div>
       <button class="btn" onclick="loadOpportunites()">↻ Actualiser</button>
     </div>
     <div class="kpi-grid" id="opp-kpi"><div class="loader"><div class="spinner"></div></div></div>
@@ -307,7 +351,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
   <!-- ALERTES -->
   <div class="page" id="page-alertes">
     <div class="topbar">
-      <div><div class="pg-title">Alertes</div><div class="pg-sub">Anomalies critiques et interventions urgentes</div></div>
+      <div><div class="pg-title">Alertes</div><div class="pg-sub">Anomalies critiques — Alertes email envoyées à brinsi.amal24@gmail.com</div></div>
       <button class="btn" onclick="loadAlertes()">↻ Actualiser</button>
     </div>
     <div class="kpi-grid" id="alertes-kpi"><div class="loader"><div class="spinner"></div></div></div>
@@ -331,17 +375,46 @@ code{font-family:'Courier New',monospace;font-size:12px;background:#f0f2f5;paddi
 </div>
 
 <script>
-Chart.defaults.color='#7a839a';Chart.defaults.borderColor='#f0f2f5';Chart.defaults.font.family="'Segoe UI',Arial,sans-serif";Chart.defaults.font.size=12;
+Chart.defaults.color='#7a839a';Chart.defaults.borderColor='#f0f2f5';
+Chart.defaults.font.family="'Segoe UI',Arial,sans-serif";Chart.defaults.font.size=12;
 const CHARTS={};const COLORS=['#1565c0','#1a7a4a','#c0392b','#b8860b','#6a1b9a','#d35400','#0277bd','#2e7d32'];
 const PAG={anomalies:{page:1,pp:25},decisions:{page:1,pp:25},opportunites:{page:1,pp:25}};
 let DATA={anomalies:[],decisions:[],opportunites:[],alertes:[]};
 
+// ── AUTO-REFRESH : 60 secondes
+const REFRESH_SEC = 60;
+let refreshLeft   = REFRESH_SEC;
+let currentPage   = 'dashboard';
+
+setInterval(()=>{
+  refreshLeft--;
+  document.getElementById('countdown').textContent = refreshLeft;
+  const pct = (refreshLeft / REFRESH_SEC) * 100;
+  document.getElementById('timer-fill').style.width = pct + '%';
+  if(refreshLeft <= 0){
+    refreshLeft = REFRESH_SEC;
+    autoRefresh();
+  }
+}, 1000);
+
+function autoRefresh(){
+  checkES();
+  const loaders = {
+    dashboard: loadDashboard, live: loadLive, logs: loadLogs,
+    anomalies: loadAnomalies, decisions: loadDecisions,
+    opportunites: loadOpportunites, alertes: loadAlertes, status: loadStatus
+  };
+  (loaders[currentPage] || loadDashboard)();
+}
+
 function showPage(id,btn){
+  currentPage = id;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn)btn.classList.add('active');
-  ({dashboard:loadDashboard,logs:loadLogs,anomalies:loadAnomalies,decisions:loadDecisions,opportunites:loadOpportunites,alertes:loadAlertes,status:loadStatus}[id]||function(){})();
+  ({dashboard:loadDashboard,live:loadLive,logs:loadLogs,anomalies:loadAnomalies,
+    decisions:loadDecisions,opportunites:loadOpportunites,alertes:loadAlertes,status:loadStatus}[id]||function(){})();
 }
 
 async function api(p){const r=await fetch(p);if(!r.ok)throw new Error(r.status);return r.json();}
@@ -349,7 +422,8 @@ function loader(el){el.innerHTML='<div class="loader"><div class="spinner"></div
 function mkChart(id,type,labels,datasets,opts={}){
   const c=document.getElementById(id);if(!c)return;
   if(CHARTS[id])CHARTS[id].destroy();
-  CHARTS[id]=new Chart(c.getContext('2d'),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:12}}},...opts}});
+  CHARTS[id]=new Chart(c.getContext('2d'),{type,data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:12}}},...opts}});
 }
 function fmt(n){return Number(n||0).toLocaleString('fr-FR');}
 function badge(v,t='impact'){
@@ -372,7 +446,7 @@ async function checkES(){
   }catch(e){}
 }
 
-// DASHBOARD
+// ── DASHBOARD
 async function loadDashboard(){
   await checkES();await loadKPIs();await loadHeures();await loadAgChart();await loadErrChart('chart-erreurs-db');
 }
@@ -385,9 +459,9 @@ async function loadKPIs(){
       +kpiCard('c-gold','⏱️','Durée moyenne',d.duree_moy_sec+'s','par action')
       +kpiCard('c-purple','🤖','Décisions RPA',fmt(d.decisions_rpa),'R001 → R009')
       +kpiCard('c-orange','🔍','Anomalies ML',fmt(d.anomalies),'Isolation Forest 5%')
-      +kpiCard('c-green','💰','Gain temps estimé',d.gain_min+'m',(d.gain_min/60).toFixed(1)+' heures')
-      +kpiCard('c-blue','🚀','Opportunités RPA',fmt(d.opportunites),d.gain_cout+' TND estimés');
-  }catch(e){g.innerHTML='<div class="loader">⚠️ Erreur KPIs — vérifiez que Docker est lancé</div>';}
+      +kpiCard('c-green','💰','Gain temps',d.gain_min+'m',(d.gain_min/60).toFixed(1)+'h estimées')
+      +kpiCard('c-blue','🚀','Opportunités RPA',fmt(d.opportunites),d.gain_cout+' TND');
+  }catch(e){g.innerHTML='<div class="loader">⚠️ Erreur KPIs</div>';}
 }
 async function loadHeures(){
   try{const d=await api('/api/logs/heures');
@@ -400,7 +474,8 @@ async function loadHeures(){
 async function loadAgChart(){
   try{const d=await api('/api/logs/agences');
     mkChart('chart-agences-db','bar',d.slice(0,10).map(x=>x.agence),[
-      {label:"Taux échec %",data:d.slice(0,10).map(x=>x.taux_echec_pct),backgroundColor:d.slice(0,10).map(x=>x.taux_echec_pct>35?'rgba(192,57,43,.75)':x.taux_echec_pct>25?'rgba(211,84,0,.75)':'rgba(26,122,74,.75)'),borderRadius:6}
+      {label:"Taux échec %",data:d.slice(0,10).map(x=>x.taux_echec_pct),
+       backgroundColor:d.slice(0,10).map(x=>x.taux_echec_pct>35?'rgba(192,57,43,.75)':x.taux_echec_pct>25?'rgba(211,84,0,.75)':'rgba(26,122,74,.75)'),borderRadius:6}
     ],{indexAxis:'y',plugins:{legend:{display:false}}});
   }catch(e){}
 }
@@ -410,7 +485,39 @@ async function loadErrChart(id){
   }catch(e){}
 }
 
-// LOGS
+// ── LIVE LOGS
+let liveInterval=null;
+async function loadLive(){
+  if(liveInterval)clearInterval(liveInterval);
+  await refreshLive();
+  liveInterval=setInterval(refreshLive,5000); // refresh toutes les 5s
+}
+async function refreshLive(){
+  try{
+    const d=await api('/api/logs/live');
+    // KPIs live
+    document.getElementById('live-kpi').innerHTML=
+      kpiCard('c-blue','📊','Total CSV',fmt(d.total_csv),'logs cumulés')
+      +kpiCard('c-green','🕐','Logs cette heure',fmt(d.logs_cette_heure),'heure '+d.heure_courante+'h')
+      +kpiCard('c-red','❌','Échecs heure',fmt(d.echecs_heure),'taux '+d.taux_echec_live+'%')
+      +kpiCard('c-orange','⏱️','Dernier refresh',d.timestamp,'auto toutes 5s');
+    // Feed
+    document.getElementById('live-sub').textContent='Dernière mise à jour : '+d.timestamp+' — '+d.total_csv+' logs total';
+    const feed=document.getElementById('live-feed');
+    feed.innerHTML=d.last_logs.map(r=>`
+      <div class="feed-row">
+        <span class="feed-ts">${r.timestamp.substr(11,8)}</span>
+        <span class="feed-user">${r.user_id||'—'}</span>
+        <span class="feed-ag">${(r.agence||'').substr(0,10)}</span>
+        <span class="feed-action">${r.action||'—'} <span style="color:#6e7681;font-size:10px">${r.processus||''}</span></span>
+        <span class="${r.success?'feed-ok':'feed-fail'}">${r.success?'✓':'✗'}</span>
+        <span class="feed-dur">${r.duree_action_sec||'—'}s</span>
+        <span style="color:#6e7681;font-size:10px">${r.error_code!=='NONE'?r.error_code:''}</span>
+      </div>`).join('');
+  }catch(e){document.getElementById('live-kpi').innerHTML='<div class="loader">⚠️ Simulateur non lancé</div>';}
+}
+
+// ── LOGS
 async function loadLogs(){await loadActChart();await loadErrChart('chart-erreurs-lg');await loadAgTable();}
 async function loadActChart(){
   try{const d=await api('/api/logs/actions_echouees');
@@ -424,14 +531,14 @@ async function loadAgTable(){
   }catch(e){el.innerHTML='<div class="loader">⚠️ Erreur</div>';}
 }
 
-// ANOMALIES
+// ── ANOMALIES
 async function loadAnomalies(){
   const kpi=document.getElementById('anomalies-kpi');loader(kpi);
   try{const d=await api('/api/anomalies');DATA.anomalies=d.liste;
     kpi.innerHTML=kpiCard('c-red','🔍','Total anomalies',fmt(d.total),'5% des logs')
       +kpiCard('c-red','🚨','CRITIQUES',fmt(d.critiques),'score < -0.2')
       +kpiCard('c-orange','⚠️','HAUTES',fmt(d.hauts),'score ≥ -0.2')
-      +kpiCard('c-blue','👥','Users anormaux',fmt(d.top_users.length),'utilisateurs concernés');
+      +kpiCard('c-blue','👥','Users anormaux',fmt(d.top_users.length),'utilisateurs');
     mkChart('chart-anom-users','bar',d.top_users.map(x=>x.user),[{label:'Anomalies',data:d.top_users.map(x=>x.count),backgroundColor:'rgba(192,57,43,.75)',borderRadius:6}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:30}}}});
     mkChart('chart-anom-agences','bar',d.top_agences.map(x=>x.agence),[{label:'Anomalies',data:d.top_agences.map(x=>x.count),backgroundColor:'rgba(211,84,0,.75)',borderRadius:6}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:30}}}});
     PAG.anomalies.page=1;renderAnomaliesTable();
@@ -454,7 +561,7 @@ function renderAnomaliesTable(){
 }
 function pagA(d){PAG.anomalies.page+=d;renderAnomaliesTable();}
 
-// DÉCISIONS
+// ── DÉCISIONS
 async function loadDecisions(){
   const kpi=document.getElementById('decisions-kpi');loader(kpi);
   try{const d=await api('/api/decisions');DATA.decisions=d.liste;
@@ -481,14 +588,14 @@ function renderDecisionsTable(){
   const data=filterDec();const p=PAG.decisions;
   const total=data.length;const start=(p.page-1)*p.pp;const page=data.slice(start,start+p.pp);
   el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Règle</th><th>Priorité</th><th>Robot</th><th>Processus</th><th>Type</th><th>Source</th><th>Occurrences</th><th>Gain (min)</th><th>Statut</th></tr></thead><tbody>
-    ${page.map(d=>`<tr><td>${badge(d.regle_id,'gold')||'<span class="badge b-gold">'+d.regle_id+'</span>'}</td><td>${badge(d.priorite,'prio')}</td><td><code>${d.robot||'—'}</code></td><td>${d.processus||'—'}</td><td>${badge(d.type_robot,'type')}</td><td>${d.source||'—'}</td><td><strong>${fmt(d.nb_occurrences)}</strong></td><td>${d.gain_temps_min||0} min</td><td><span class="badge ${d.statut_final==='SUCCES'?'b-green':'b-orange'}">${d.statut_final||'—'}</span></td></tr>`).join('')}
+    ${page.map(d=>`<tr><td><span class="badge b-gold">${d.regle_id||'—'}</span></td><td>${badge(d.priorite,'prio')}</td><td><code>${d.robot||'—'}</code></td><td>${d.processus||'—'}</td><td>${badge(d.type_robot,'type')}</td><td>${d.source||'—'}</td><td><strong>${fmt(d.nb_occurrences)}</strong></td><td>${d.gain_temps_min||0} min</td><td><span class="badge ${d.statut_final==='SUCCES'?'b-green':'b-orange'}">${d.statut_final||'—'}</span></td></tr>`).join('')}
     </tbody></table></div>
     <div class="pagination"><div class="pag-info">Affichage ${start+1}–${Math.min(start+p.pp,total)} sur ${total}</div>
     <div class="pag-btns"><button class="pag-btn" onclick="pagD(-1)" ${p.page===1?'disabled':''}>← Préc.</button><button class="pag-btn" onclick="pagD(1)" ${start+p.pp>=total?'disabled':''}>Suiv. →</button></div></div>`;
 }
 function pagD(d){PAG.decisions.page+=d;renderDecisionsTable();}
 
-// OPPORTUNITÉS
+// ── OPPORTUNITÉS
 async function loadOpportunites(){
   const kpi=document.getElementById('opp-kpi');loader(kpi);
   try{const d=await api('/api/opportunites');DATA.opportunites=d.liste;
@@ -517,7 +624,7 @@ function renderOpportunites(){
 }
 function pagO(d){PAG.opportunites.page+=d;renderOpportunites();}
 
-// ALERTES
+// ── ALERTES
 async function loadAlertes(){
   const kpi=document.getElementById('alertes-kpi');const el=document.getElementById('alertes-list');
   loader(kpi);loader(el);
@@ -525,9 +632,9 @@ async function loadAlertes(){
     const nb=document.getElementById('nav-badge-alertes');
     if(nb&&d.total>0){nb.textContent=d.total;nb.classList.add('show');}
     kpi.innerHTML=kpiCard('c-red','🚨','Total alertes',fmt(d.total),'nécessitent attention')
-      +kpiCard('c-red','🔴','CRITIQUES',fmt(d.critiques),'intervention immédiate')
+      +kpiCard('c-red','🔴','CRITIQUES',fmt(d.critiques),'email → brinsi.amal24@gmail.com')
       +kpiCard('c-orange','🟠','HAUTES',fmt(d.hautes),'intervention rapide')
-      +kpiCard('c-green','✅','Résolues','0','cette session');
+      +kpiCard('c-green','📧','Emails envoyés',fmt(d.critiques),'via n8n SMTP');
     renderAlertes('tous');
   }catch(e){kpi.innerHTML='<div class="loader">⚠️ Erreur alertes</div>';}
 }
@@ -547,28 +654,35 @@ function renderAlertes(filtre){
           <span>🤖 ${a.robot}</span><span>🏦 ${a.agence}</span>
           <span>${a.niveau==='CRITIQUE'?'<span class="badge b-red">CRITIQUE</span>':'<span class="badge b-orange">HAUTE</span>'}</span>
           <span>📋 ${a.type}</span><span>🆔 <code>${a.id}</code></span>
+          ${a.niveau==='CRITIQUE'?'<span>📧 <strong>email envoyé</strong></span>':''}
         </div>
       </div>
     </div>`).join('')+'</div>';
 }
 
-// STATUS
+// ── STATUS
 async function loadStatus(){
   const el=document.getElementById('status-content');loader(el);
   try{const s=await api('/api/status');const ok=s.elasticsearch;
-    el.innerHTML=`<div class="status-card"><div class="status-ico ${ok?'ok':'err'}">${ok?'✅':'❌'}</div><div><div class="status-lbl ${ok?'ok':'err'}">Elasticsearch ${ok?'CONNECTÉ':'DÉCONNECTÉ'}</div><div class="status-url">http://localhost:9200 — ${s.timestamp}</div></div></div>`
-    +(ok&&s.indices.length?`<div class="sec-title" style="margin-top:0">Indices Attijari</div><div class="card"><table><thead><tr><th>Index</th><th>Documents</th><th>Statut</th></tr></thead><tbody>${s.indices.map(i=>`<tr><td><code>${i.index}</code></td><td><strong>${fmt(i.docs)}</strong></td><td><span class="badge b-green">ACTIF</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="loader">${ok?'Aucun index Attijari trouvé':'⚠️ Lancez Docker : docker-compose up -d'}</div>`)
-    +`<div class="sec-title">Fichiers JSON locaux</div><div class="card"><div class="stat-list" id="json-files"><div class="loader"><div class="spinner"></div></div></div></div>`;
-    try{const k=await api('/api/kpis');document.getElementById('json-files').innerHTML=
-      `<div class="stat-item"><div class="stat-name">📁 resultats_phase2.json</div><div class="stat-count">${k.repetitions+k.erreurs+k.goulots+k.anomalies+k.opportunites} entrées</div></div>
-       <div class="stat-item"><div class="stat-name">📁 decisions_phase3.json</div><div class="stat-count">${k.decisions_rpa} décisions</div></div>`;}catch(e){}
+    el.innerHTML=`<div class="status-card"><div class="status-ico ${ok?'ok':'err'}">${ok?'✅':'❌'}</div>
+      <div><div class="status-lbl ${ok?'ok':'err'}">Elasticsearch ${ok?'CONNECTÉ':'DÉCONNECTÉ'}</div>
+      <div class="status-url">http://localhost:9200 — ${s.timestamp}</div></div></div>`
+    +(ok&&s.indices.length?`<div class="sec-title" style="margin-top:0">Indices Attijari</div><div class="card"><table><thead><tr><th>Index</th><th>Documents</th><th>Statut</th></tr></thead><tbody>${s.indices.map(i=>`<tr><td><code>${i.index}</code></td><td><strong>${fmt(i.docs)}</strong></td><td><span class="badge b-green">ACTIF</span></td></tr>`).join('')}</tbody></table></div>`
+    :`<div class="loader">${ok?'Aucun index Attijari trouvé':'⚠️ Lancez Docker : docker-compose up -d'}</div>`)
+    +`<div class="sec-title">CSV Simulateur</div><div class="card">
+        <div class="stat-item"><div class="stat-name">📁 attijari_bank_logs_10000.csv</div><div class="stat-count">${s.csv_loaded} lignes</div></div>
+        <div class="stat-item"><div class="stat-name">⏱️ Auto-refresh</div><div class="stat-count">60s</div></div>
+        <div class="stat-item"><div class="stat-name">🔄 Simulateur</div><div class="stat-count">1 log/s</div></div>
+       </div>`;
   }catch(e){el.innerHTML='<div class="loader">⚠️ Erreur Flask</div>';}
 }
 
-// INIT
+// ── INIT
 window.addEventListener('DOMContentLoaded',async()=>{
   await checkES();loadDashboard();
-  try{const a=await api('/api/alertes');const nb=document.getElementById('nav-badge-alertes');if(nb&&a.total>0){nb.textContent=a.total;nb.classList.add('show');}}catch(e){}
+  try{const a=await api('/api/alertes');const nb=document.getElementById('nav-badge-alertes');
+    if(nb&&a.total>0){nb.textContent=a.total;nb.classList.add('show');}
+  }catch(e){}
   setInterval(checkES,60000);
 });
 </script>
