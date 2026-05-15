@@ -1,5 +1,36 @@
+version: '3.8'
+
 services:
- 
+  
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - elk
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - elk
+    restart: unless-stopped
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: elasticsearch
@@ -18,7 +49,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
- 
+    restart: unless-stopped
+
   kibana:
     image: docker.elastic.co/kibana/kibana:8.12.0
     container_name: kibana
@@ -31,11 +63,12 @@ services:
         condition: service_healthy
     networks:
       - elk
- 
+    restart: unless-stopped
+
   n8n:
     image: n8nio/n8n
     container_name: n8n
-    restart: always
+    restart: unless-stopped
     ports:
       - "5678:5678"
     environment:
@@ -48,7 +81,7 @@ services:
       - N8N_SMTP_HOST=smtp.gmail.com
       - N8N_SMTP_PORT=587
       - N8N_SMTP_USER=brinsi.amal24@gmail.com
-      - N8N_SMTP_PASS=${PFE_2026_ISETN}   
+      - N8N_SMTP_PASS=${PFE_2026_ISETN}
       - N8N_SMTP_SENDER=brinsi.amal24@gmail.com
     volumes:
       - n8n_data:/home/node/.n8n
@@ -58,49 +91,81 @@ services:
         condition: service_healthy
     networks:
       - elk
- 
-  flask:
+  
+
+  flask-app:
     image: python:3.11-slim
     container_name: flask-app
     working_dir: /app
     command: >
-      sh -c "pip install flask elasticsearch --quiet && python app.py"
+      sh -c "pip install flask elasticsearch kafka-python flask-cors requests --quiet && python app.py"
     ports:
       - "5000:5000"
     volumes:
       - C:/pfe:/app
     environment:
       - ES_HOST=http://elasticsearch:9200
+      - KAFKA_HOST=kafka:29092
       - FLASK_ENV=development
     depends_on:
       elasticsearch:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - elk
     restart: unless-stopped
-  simulator:
+
+  producer:
     image: python:3.11-slim
-    container_name: log-simulator
+    container_name: log-producer
     working_dir: /app
     command: >
-      sh -c "pip install elasticsearch --quiet && python simulator.py"
+      sh -c "pip install elasticsearch kafka-python --quiet && python producer.py"
     volumes:
       - C:/pfe:/app
     environment:
       - ES_HOST=http://elasticsearch:9200
-      - SIM_INTERVAL=1.0   
-      - SIM_BURST=1        
+      - KAFKA_HOST=kafka:29092
+      - SIM_INTERVAL=1.0
+      - SIM_BURST=1
     depends_on:
       elasticsearch:
         condition: service_healthy
+      kafka:
+        condition: service_started
+    networks:
+      - elk
+    restart: "no"
+
+  consumer:
+    image: python:3.11-slim
+    container_name: log-consumer
+    working_dir: /app
+    command: >
+      sh -c "pip install elasticsearch kafka-python requests --quiet && python consumer.py"
+    volumes:
+      - C:/pfe:/app
+    environment:
+      - ES_HOST=http://elasticsearch:9200
+      - KAFKA_HOST=kafka:29092
+      - FLASK_HOST=http://flask-app:5000
+      - DETECTION_INTERVAL=60
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      flask-app:
+        condition: service_started
     networks:
       - elk
     restart: unless-stopped
- 
+
 volumes:
   es_data:
   n8n_data:
- 
+
 networks:
   elk:
     driver: bridge

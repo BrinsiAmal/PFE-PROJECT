@@ -1,28 +1,34 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
 from elasticsearch import Elasticsearch
-import json, os, csv
 from datetime import datetime
+import json, os, csv
 from collections import defaultdict
- 
-app     = Flask(__name__)
+import queue
+
+app = Flask(__name__)
+CORS(app)
 ES_HOST = os.environ.get('ES_HOST', 'http://localhost:9200')
-es      = Elasticsearch(ES_HOST)
- 
+es = Elasticsearch([ES_HOST])
+
+# Queue pour anomalies et décisions temps réel
+anomalies_queue = queue.Queue(maxsize=1000)
+decisions_queue = queue.Queue(maxsize=1000)
+
 # ═══════════════════════════════════════════
-#  HELPERS
+# HELPERS
 # ═══════════════════════════════════════════
- 
+
 def es_ok():
     try:    return es.ping()
     except: return False
- 
+
 def load_json(path):
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {}
- 
-# CSV — rechargé à chaque appel pour refléter les nouveaux logs simulés
+
 def get_csv():
     path = 'attijari_bank_logs_10000.csv'
     if not os.path.exists(path):
@@ -39,333 +45,225 @@ def get_csv():
             except: row['heure'] = 0
             rows.append(row)
     return rows
- 
+
 # ═══════════════════════════════════════════
-#  PAGE
+# PAGE
 # ═══════════════════════════════════════════
- 
+
 @app.route('/')
 def index():
     return render_template('index.html')
- 
+
 # ═══════════════════════════════════════════
-#  STATUS
+# WEBHOOKS - Réception Consumer/n8n
 # ═══════════════════════════════════════════
- 
+
+@app.route('/webhook/anomaly', methods=['POST'])
+def webhook_anomaly():
+    """Webhook reçoit les anomalies du CONSUMER"""
+    try:
+        data = request.get_json()
+        
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        
+        # Sauvegarder dans Elasticsearch
+        if es_ok():
+            es.index(index='attijari-anomalies', document=data)
+        
+        # Ajouter à queue pour SSE
+        anomalies_queue.put(data)
+        
+        print(f"✅ [WEBHOOK] Anomalie reçue: {data.get('regle_id')} | {data.get('user_id')} | {data.get('taux_echec_pct')}%")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Anomalie enregistrée',
+            'id': data.get('regle_id')
+        }), 201
+    
+    except Exception as e:
+        print(f"❌ [WEBHOOK] Erreur anomalie: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+
+@app.route('/webhook/decision', methods=['POST'])
+def webhook_decision():
+    """Webhook reçoit les décisions du n8n"""
+    try:
+        data = request.get_json()
+        
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        
+        if es_ok():
+            es.index(index='attijari-robots-logs', document=data)
+        
+        decisions_queue.put(data)
+        
+        print(f"✅ [WEBHOOK] Décision reçue: {data.get('robot')} | {data.get('regle_id')}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Décision enregistrée',
+            'robot': data.get('robot')
+        }), 201
+    
+    except Exception as e:
+        print(f"❌ [WEBHOOK] Erreur décision: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+
+# ═══════════════════════════════════════════
+# SSE - Anomalies Temps Réel
+# ═══════════════════════════════════════════
+
+@app.route('/api/anomalies/stream')
+def anomalies_stream():
+    """Stream SSE pour anomalies temps réel"""
+    def generate():
+        try:
+            if es_ok():
+                response = es.search(
+                    index='attijari-anomalies',
+                    size=50,
+                    sort=[{'timestamp': {'order': 'desc'}}]
+                )
+                for hit in response['hits']['hits']:
+                    anomaly = hit['_source']
+                    yield f"data: {json.dumps(anomaly)}\n\n"
+        except:
+            pass
+        
+        while True:
+            try:
+                anomaly = anomalies_queue.get(timeout=30)
+                yield f"data: {json.dumps(anomaly)}\n\n"
+            except:
+                yield f": keep-alive\n\n"
+    
+    return app.response_class(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )
+
+@app.route('/api/decisions/stream')
+def decisions_stream():
+    """Stream SSE pour décisions temps réel"""
+    def generate():
+        try:
+            if es_ok():
+                response = es.search(
+                    index='attijari-robots-logs',
+                    size=50,
+                    sort=[{'timestamp': {'order': 'desc'}}]
+                )
+                for hit in response['hits']['hits']:
+                    decision = hit['_source']
+                    yield f"data: {json.dumps(decision)}\n\n"
+        except:
+            pass
+        
+        while True:
+            try:
+                decision = decisions_queue.get(timeout=30)
+                yield f"data: {json.dumps(decision)}\n\n"
+            except:
+                yield f": keep-alive\n\n"
+    
+    return app.response_class(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'
+        }
+    )
+
+# ═══════════════════════════════════════════
+# API - Anomalies
+# ═══════════════════════════════════════════
+
+@app.route('/api/anomalies')
+def api_anomalies():
+    """Retourne toutes les anomalies"""
+    if es_ok():
+        try:
+            response = es.search(
+                index='attijari-anomalies',
+                size=1000,
+                sort=[{'timestamp': {'order': 'desc'}}]
+            )
+            anomalies = [hit['_source'] for hit in response['hits']['hits']]
+        except:
+            anomalies = []
+    else:
+        p2 = load_json('resultats_phase2.json')
+        anomalies = p2.get('anomalies', [])
+    
+    uc, ac = defaultdict(int), defaultdict(int)
+    for a in anomalies:
+        uc[a.get('user_id', 'N/A')] += 1
+        ac[a.get('agence', 'N/A')] += 1
+    
+    return jsonify({
+        'total': len(anomalies),
+        'critiques': len([a for a in anomalies if a.get('taux_echec_pct', 0) > 75]),
+        'hautes': len([a for a in anomalies if 50 <= a.get('taux_echec_pct', 0) <= 75]),
+        'top_users': [{'user': u, 'count': c} for u, c in sorted(uc.items(), key=lambda x: -x[1])[:10]],
+        'top_agences': [{'agence': a, 'count': c} for a, c in sorted(ac.items(), key=lambda x: -x[1])[:10]],
+        'liste': sorted(anomalies, key=lambda x: x.get('timestamp', ''), reverse=True)[:100]
+    })
+
+@app.route('/api/decisions')
+def api_decisions():
+    """Retourne toutes les décisions"""
+    if es_ok():
+        try:
+            response = es.search(
+                index='attijari-robots-logs',
+                size=1000,
+                sort=[{'timestamp': {'order': 'desc'}}]
+            )
+            decisions = [hit['_source'] for hit in response['hits']['hits']]
+        except:
+            decisions = []
+    else:
+        p3 = load_json('decisions_phase3.json')
+        decisions = p3.get('decisions', [])
+    
+    pt, pr, ps, pp = defaultdict(int), defaultdict(int), defaultdict(int), defaultdict(int)
+    for d in decisions:
+        pt[d.get('type_robot', 'AUTRE')] += 1
+        pr[d.get('robot', 'N/A')] += 1
+        ps[d.get('source', 'N/A')] += 1
+        pp[str(d.get('priority', 0))] += 1
+    
+    return jsonify({
+        'total': len(decisions),
+        'par_type': [{'label': k, 'value': v} for k, v in pt.items()],
+        'par_robot': [{'label': k, 'value': v} for k, v in sorted(pr.items(), key=lambda x: -x[1])],
+        'par_source': [{'label': k, 'value': v} for k, v in ps.items()],
+        'par_prio': [{'label': f'P{k}', 'value': v} for k, v in sorted(pp.items())],
+        'liste': sorted(decisions, key=lambda x: (x.get('priority', 9), -x.get('nb_occurrences', 0)))
+    })
+
+# ═══════════════════════════════════════════
+# STATUS & KPIs
+# ═══════════════════════════════════════════
+
 @app.route('/api/status')
 def api_status():
     ok, indices = es_ok(), []
     if ok:
         try:
-            cat     = es.cat.indices(format='json')
+            cat = es.cat.indices(format='json')
             indices = [
-                {'index': i['index'], 'docs': i.get('docs.count', '0')}
-                for i in cat if 'attijari' in i['index']
+                {'index': i['index'], 'docs': i.get('docs.count', '0'), 'size': i.get('store.size', '0')}
+                for i in cat if i['index'] in ['attijari-anomalies', 'attijari-robots-logs']
             ]
-        except Exception as e:
-            print(f'[status] {e}')
-    return jsonify({
-        'elasticsearch' : ok,
-        'indices'       : indices,
-        'csv_loaded'    : len(get_csv()),
-        'timestamp'     : datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    })
- 
-# ═══════════════════════════════════════════
-#  LIVE — derniers logs (simulateur temps réel)
-# ═══════════════════════════════════════════
- 
-@app.route('/api/logs/live')
-def api_live():
-    """Retourne les 20 derniers logs + stats minute courante"""
-    rows = get_csv()
-    last = rows[-50:] if len(rows) >= 50 else rows
-    last.reverse()
- 
-    # Stats dernière minute
-    now_h = datetime.now().hour
-    recent = [r for r in rows if r.get('heure') == now_h]
-    total_r  = len(recent)
-    echecs_r = sum(1 for r in recent if not r['success'])
- 
-    return jsonify({
-        'last_logs'       : last[:20],
-        'total_csv'       : len(rows),
-        'heure_courante'  : now_h,
-        'logs_cette_heure': total_r,
-        'echecs_heure'    : echecs_r,
-        'taux_echec_live' : round(echecs_r / total_r * 100, 1) if total_r else 0,
-        'timestamp'       : datetime.now().strftime('%H:%M:%S')
-    })
- 
-# ═══════════════════════════════════════════
-#  KPIs
-# ═══════════════════════════════════════════
- 
-@app.route('/api/kpis')
-def api_kpis():
-    p2 = load_json('resultats_phase2.json')
-    p3 = load_json('decisions_phase3.json')
-    total = succes = robots_total = 0
-    duree_moy = 0.0
- 
-    if es_ok():
-        try:
-            total    = es.count(index='attijari-logs')['count']
-            succes   = es.count(index='attijari-logs', query={'term': {'success': True}})['count']
-            r        = es.search(index='attijari-logs', size=0, aggs={'d': {'avg': {'field': 'duree_action_sec'}}})
-            duree_moy= round(r['aggregations']['d']['value'] or 0, 2)
-            try:     robots_total = es.count(index='attijari-robots-logs')['count']
-            except:  robots_total = 0
-        except Exception as e:
-            print(f'[kpis ES] {e}')
- 
-    if total == 0:
-        rows      = get_csv()
-        total     = len(rows)
-        succes    = sum(1 for r in rows if r['success'])
-        durees    = [r['duree_action_sec'] for r in rows if r['duree_action_sec'] > 0]
-        duree_moy = round(sum(durees) / len(durees), 2) if durees else 0.0
- 
-    echecs    = total - succes
-    decisions = p3.get('decisions', [])
-    opps      = p2.get('opportunites', [])
- 
-    return jsonify({
-        'total_logs'      : total,
-        'succes'          : succes,
-        'echecs'          : echecs,
-        'taux_succes_pct' : round(succes / total * 100, 1) if total else 0,
-        'taux_echec_pct'  : round(echecs / total * 100, 1) if total else 0,
-        'duree_moy_sec'   : duree_moy,
-        'robots_total'    : robots_total,
-        'repetitions'     : len(p2.get('repetitions', [])),
-        'erreurs'         : len(p2.get('erreurs', [])),
-        'goulots'         : len(p2.get('goulots', [])),
-        'anomalies'       : len(p2.get('anomalies', [])),
-        'opportunites'    : len(opps),
-        'decisions_rpa'   : len(decisions),
-        'gain_min'        : sum(d.get('gain_temps_min', 0) for d in decisions),
-        'gain_cout'       : round(sum(o.get('gain_cout_tnd', 0) for o in opps), 2),
-    })
- 
-# ═══════════════════════════════════════════
-#  AGENCES
-# ═══════════════════════════════════════════
- 
-@app.route('/api/logs/agences')
-def api_agences():
-    if es_ok():
-        try:
-            res = es.search(index='attijari-logs', size=0, aggs={
-                'par_agence': {
-                    'terms': {'field': 'agence', 'size': 20},
-                    'aggs' : {'echecs': {'filter': {'term': {'success': False}}}}
-                }
-            })
-            data = []
-            for b in res['aggregations']['par_agence']['buckets']:
-                t = b['doc_count']; e = b['echecs']['doc_count']
-                data.append({'agence': b['key'], 'total': t, 'echecs': e,
-                             'taux_echec_pct': round(e / t * 100, 1) if t else 0})
-            return jsonify(sorted(data, key=lambda x: -x['taux_echec_pct']))
-        except Exception as e:
-            print(f'[agences ES] {e}')
- 
-    rows = get_csv()
-    agences = defaultdict(lambda: {'total': 0, 'echecs': 0})
-    for r in rows:
-        ag = r.get('agence', 'N/A')
-        agences[ag]['total'] += 1
-        if not r['success']: agences[ag]['echecs'] += 1
-    data = [{'agence': ag, 'total': v['total'], 'echecs': v['echecs'],
-              'taux_echec_pct': round(v['echecs'] / v['total'] * 100, 1) if v['total'] else 0}
-            for ag, v in agences.items()]
-    return jsonify(sorted(data, key=lambda x: -x['taux_echec_pct']))
- 
-# ═══════════════════════════════════════════
-#  HEURES
-# ═══════════════════════════════════════════
- 
-@app.route('/api/logs/heures')
-def api_heures():
-    if es_ok():
-        try:
-            res = es.search(index='attijari-logs', size=0, aggs={
-                'par_heure': {
-                    'terms': {'field': 'heure', 'size': 24, 'order': {'_key': 'asc'}},
-                    'aggs' : {'echecs': {'filter': {'term': {'success': False}}}}
-                }
-            })
-            heures = {str(i): {'total': 0, 'echecs': 0} for i in range(24)}
-            for b in res['aggregations']['par_heure']['buckets']:
-                heures[str(b['key'])] = {'total': b['doc_count'], 'echecs': b['echecs']['doc_count']}
-            return jsonify([{'heure': int(k), 'total': v['total'], 'echecs': v['echecs']}
-                           for k, v in sorted(heures.items(), key=lambda x: int(x[0]))])
-        except Exception as e:
-            print(f'[heures ES] {e}')
- 
-    rows   = get_csv()
-    heures = defaultdict(lambda: {'total': 0, 'echecs': 0})
-    for r in rows:
-        h = r.get('heure', 0)
-        heures[h]['total'] += 1
-        if not r['success']: heures[h]['echecs'] += 1
-    return jsonify([{'heure': h, 'total': v['total'], 'echecs': v['echecs']}
-                   for h, v in sorted(heures.items())])
- 
-# ═══════════════════════════════════════════
-#  ERREURS
-# ═══════════════════════════════════════════
- 
-@app.route('/api/logs/erreurs')
-def api_erreurs():
-    if es_ok():
-        try:
-            res = es.search(index='attijari-logs', size=0,
-                query={'bool': {'must_not': [{'term': {'error_code': 'NONE'}}]}},
-                aggs={'top_erreurs': {'terms': {'field': 'error_code', 'size': 10}}})
-            return jsonify([{'code': b['key'], 'count': b['doc_count']}
-                           for b in res['aggregations']['top_erreurs']['buckets']])
-        except Exception as e:
-            print(f'[erreurs ES] {e}')
- 
-    rows   = get_csv()
-    counts = defaultdict(int)
-    for r in rows:
-        ec = r.get('error_code', 'NONE')
-        if ec and ec != 'NONE': counts[ec] += 1
-    return jsonify([{'code': k, 'count': v} for k, v in sorted(counts.items(), key=lambda x: -x[1])[:10]])
- 
-# ═══════════════════════════════════════════
-#  ACTIONS ÉCHOUÉES
-# ═══════════════════════════════════════════
- 
-@app.route('/api/logs/actions_echouees')
-def api_actions():
-    if es_ok():
-        try:
-            res = es.search(index='attijari-logs', size=0, query={'term': {'success': False}},
-                aggs={'top_actions': {'terms': {'field': 'action', 'size': 10}}})
-            return jsonify([{'action': b['key'], 'count': b['doc_count']}
-                           for b in res['aggregations']['top_actions']['buckets']])
-        except Exception as e:
-            print(f'[actions ES] {e}')
- 
-    rows   = get_csv()
-    counts = defaultdict(int)
-    for r in rows:
-        if not r['success']: counts[r.get('action', 'N/A')] += 1
-    return jsonify([{'action': k, 'count': v} for k, v in sorted(counts.items(), key=lambda x: -x[1])[:10]])
- 
-# ═══════════════════════════════════════════
-#  ANOMALIES / DÉCISIONS / OPPORTUNITÉS / ALERTES
-# ═══════════════════════════════════════════
- 
-@app.route('/api/anomalies')
-def api_anomalies():
-    p2        = load_json('resultats_phase2.json')
-    anomalies = p2.get('anomalies', [])
-    uc, ac    = defaultdict(int), defaultdict(int)
-    for a in anomalies:
-        uc[a.get('user_id', 'N/A')] += 1
-        ac[a.get('agence',  'N/A')] += 1
-    return jsonify({
-        'total'      : len(anomalies),
-        'critiques'  : len([a for a in anomalies if a.get('impact') == 'CRITIQUE']),
-        'hauts'      : len([a for a in anomalies if a.get('impact') == 'HAUT']),
-        'top_users'  : [{'user': u, 'count': c} for u, c in sorted(uc.items(), key=lambda x: -x[1])[:10]],
-        'top_agences': [{'agence': a, 'count': c} for a, c in sorted(ac.items(), key=lambda x: -x[1])[:10]],
-        'liste'      : sorted(anomalies, key=lambda x: x.get('score_anomalie', 0))
-    })
- 
-@app.route('/api/decisions')
-def api_decisions():
-    p3        = load_json('decisions_phase3.json')
-    decisions = p3.get('decisions', [])
-    pt, pr, ps, pp = defaultdict(int), defaultdict(int), defaultdict(int), defaultdict(int)
-    for d in decisions:
-        pt[d.get('type_robot', 'AUTRE')] += 1
-        pr[d.get('robot',      'N/A')]   += 1
-        ps[d.get('source',     'N/A')]   += 1
-        pp[str(d.get('priorite', 0))]    += 1
-    return jsonify({
-        'total'     : len(decisions),
-        'par_type'  : [{'label': k, 'value': v} for k, v in pt.items()],
-        'par_robot' : [{'label': k, 'value': v} for k, v in sorted(pr.items(), key=lambda x: -x[1])],
-        'par_source': [{'label': k, 'value': v} for k, v in ps.items()],
-        'par_prio'  : [{'label': f'Priorité {k}', 'value': v} for k, v in sorted(pp.items())],
-        'liste'     : sorted(decisions, key=lambda x: (x.get('priorite', 9), -x.get('nb_occurrences', 0)))
-    })
- 
-@app.route('/api/opportunites')
-def api_opportunites():
-    p2   = load_json('resultats_phase2.json')
-    opps = p2.get('opportunites', [])
-    pc   = defaultdict(int)
-    for o in opps: pc[o.get('categorie', 'AUTRE')] += 1
-    return jsonify({
-        'total'     : len(opps),
-        'gain_total': round(sum(o.get('gain_temps_min', 0) for o in opps), 1),
-        'cout_total': round(sum(o.get('gain_cout_tnd',  0) for o in opps), 2),
-        'roi_annuel': round(sum(o.get('gain_cout_tnd',  0) for o in opps) * 12, 0),
-        'par_cat'   : [{'label': k, 'value': v} for k, v in pc.items()],
-        'liste'     : opps
-    })
- 
-@app.route('/api/alertes')
-def api_alertes():
-    p2        = load_json('resultats_phase2.json')
-    p3        = load_json('decisions_phase3.json')
-    anomalies = p2.get('anomalies', [])
-    erreurs   = p2.get('erreurs',   [])
-    decisions = p3.get('decisions', [])
-    alertes   = []
- 
-    for a in anomalies:
-        if a.get('impact') == 'CRITIQUE':
-            alertes.append({'id': f"ALT-{len(alertes)+1:04d}", 'niveau': 'CRITIQUE',
-                'type': 'ANOMALIE', 'titre': f"Comportement anormal — {a.get('user_id','N/A')}",
-                'message': f"{a.get('user_id')} | {a.get('processus')} | {a.get('action')} | Score: {a.get('score_anomalie')}",
-                'agence': a.get('agence', 'N/A'), 'robot': 'RobotAlerteAnomalie',
-                'timestamp': a.get('timestamp', datetime.now().isoformat())})
- 
-    for e in erreurs:
-        if e.get('impact') == 'CRITIQUE':
-            alertes.append({'id': f"ALT-{len(alertes)+1:04d}", 'niveau': 'HAUTE',
-                'type': 'ERREUR', 'titre': f"Erreur critique — {e.get('error_code')} | {e.get('processus')}",
-                'message': f"{e.get('description')} : {e.get('nb_occurrences')} occurrences",
-                'agence': 'MULTI-AGENCE', 'robot': f"RobotCorrection_{e.get('error_code')}",
-                'timestamp': datetime.now().isoformat()})
- 
-    for d in decisions:
-        if d.get('priorite') == 1 and d.get('type_robot') == 'ANOMALIE':
-            alertes.append({'id': f"ALT-{len(alertes)+1:04d}", 'niveau': 'HAUTE',
-                'type': 'DECISION_RPA', 'titre': f"Intervention urgente — {d.get('robot')}",
-                'message': d.get('description', f"{d.get('robot')} sur {d.get('processus')}"),
-                'agence': d.get('agence', 'N/A'), 'robot': d.get('robot', 'N/A'),
-                'timestamp': d.get('timestamp', datetime.now().isoformat())})
- 
-    return jsonify({
-        'total'    : len(alertes),
-        'critiques': len([a for a in alertes if a['niveau'] == 'CRITIQUE']),
-        'hautes'   : len([a for a in alertes if a['niveau'] == 'HAUTE']),
-        'liste'    : alertes
-    })
- 
-# ═══════════════════════════════════════════
-#  MAIN
-# ═══════════════════════════════════════════
- 
-if __name__ == '__main__':
-    print("""
-╔══════════════════════════════════════════════╗
-║  🏦  Attijari Bank — Système RPA            ║
-║  Flask + Elasticsearch 8.x                  ║
-║  http://localhost:5000                      ║
-╚══════════════════════════════════════════════╝
-    """)
-    ok = es_ok()
-    print(f'  Elasticsearch : {"✅ Connecté" if ok else "⚠️  Non disponible (fallback CSV)"}')
-    print(f'  CSV           : {len(get_csv())} lignes\n')
-    app.run(debug=True, host='0.0.0.0', port=5000)
+        except:
+            pass    
