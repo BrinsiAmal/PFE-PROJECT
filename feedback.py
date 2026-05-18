@@ -69,7 +69,7 @@ class ImpactTracker:
                     "duree_moy": {"avg": {"field": "duree_action_sec"}}
                 })
             aggs = res.get("aggregations", {})
-            taux_succes = aggs.get("taux_echec", {}).get("value", 1) or 1
+            taux_succes = float(aggs.get("taux_echec", {}).get("value") or 1.0)
             return {
                 "taux_echec_pct": round((1 - taux_succes) * 100, 1),
                 "nb_occurrences": int(aggs.get("nb_occurrences", {}).get("value", 0)),
